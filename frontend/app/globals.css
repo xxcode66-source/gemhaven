@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --glow-color: rgba(62, 230, 196, 0.42);
+  /* System stacks only — no webfont fetch, so `next build` never needs network.
+     A high-contrast serif for display reads as engraved stone; the body face is
+     whatever the OS ships. */
+  --font-display: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-rock-void font-body text-slate-200 antialiased;
+    /* The cavern: three pools of lamplight over near-black rock. */
+    background-image:
+      radial-gradient(1100px 700px at 12% -8%, #1b1f2b 0%, transparent 62%),
+      radial-gradient(900px 620px at 88% 6%, #0b0d12 0%, transparent 58%),
+      radial-gradient(1200px 900px at 50% 108%, #12151d 0%, transparent 66%),
+      linear-gradient(180deg, #050608 0%, #07080c 55%, #050608 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  /* Never remove the focus ring — every deposit is keyboard-operable. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-gem-teal/80 ring-offset-2 ring-offset-rock-void;
+  }
+
+  ::selection {
+    background: rgba(62, 230, 196, 0.28);
+  }
+}
+
+@layer components {
+  /* A seven-point gem silhouette: broad table, angled crown, pointed pavilion.
+     Used for every deposit so the grid never reads as squares. */
+  .facet-clip {
+    clip-path: polygon(
+      50% 0%,
+      93% 26%,
+      100% 66%,
+      68% 100%,
+      32% 100%,
+      0% 66%,
+      7% 26%
+    );
+  }
+
+  /* Rock face panel — the chrome for status/claim/balance cards. */
+  .rock-panel {
+    @apply relative rounded-2xl border border-white/[0.07] bg-rock-deep/70 shadow-facet backdrop-blur-sm;
+  }
+
+  .rock-panel::before {
+    content: "";
+    @apply pointer-events-none absolute inset-0 rounded-2xl opacity-60;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), transparent 42%);
+  }
+
+  /* Thin engraved label used for section headers and metric captions. */
+  .engraved {
+    @apply text-[0.65rem] uppercase tracking-[0.22em] text-slate-500;
+  }
+
+  .gem-button {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-xl border border-gem-teal/30
+           bg-gem-teal/10 px-5 py-2.5 text-sm font-medium text-gem-teal transition
+           hover:border-gem-teal/60 hover:bg-gem-teal/20
+           disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-slate-500;
+  }
+
+  /* Overlay strip that sweeps a highlight across a facet. */
+  .facet-sheen {
+    @apply pointer-events-none absolute inset-y-0 w-1/3;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Hairline separator that reads as a seam in the rock. */
+  .seam {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  }
+}
+
+/* Respect the OS setting: kill ambient loops, keep the app fully usable.
+   Framer Motion transitions are separately gated via useReducedMotion(). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

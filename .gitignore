@@ -1,0 +1,27 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+
+# contracts
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/lib/
+
+# frontend
+frontend/.next/
+frontend/out/
+frontend/next-env.d.ts
+frontend/tsconfig.tsbuildinfo
+frontend/.vercel
+
+# workspace-local toolchain (Foundry binaries)
+.tools/
+
+# deployment temp scripts + local smoke artifacts
+.vercel-tmp/
+.qoder/
+
+.DS_Store
+*.log
