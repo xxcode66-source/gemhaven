@@ -10,7 +10,6 @@ export function ShardBalance() {
   const { isConnected } = useAccount();
   const { balance, totalSupply, symbol, totalMined } = useShardBalance();
 
-  const wins = balance !== undefined ? balance / REWARD_PER_WIN : undefined;
   const minedWins = totalMined !== undefined ? totalMined / REWARD_PER_WIN : undefined;
 
   return (
@@ -44,7 +43,10 @@ export function ShardBalance() {
           <p className="text-sm text-slate-500">Connect a wallet to see your ${symbol}.</p>
         ) : (
           <>
-            <p className="font-mono text-4xl tabular-nums text-slate-100">{formatShard(balance)}</p>
+            <div>
+              <p className="font-mono text-4xl tabular-nums text-slate-100">{formatShard(balance)}</p>
+              <p className="mt-1 text-xs text-slate-500">total ${symbol} earned — mined only, never bought</p>
+            </div>
             <dl className="grid grid-cols-2 gap-3 text-xs">
               <div>
                 <dt className="engraved">Mining score</dt>
@@ -52,7 +54,7 @@ export function ShardBalance() {
               </div>
               <div>
                 <dt className="engraved">Winning Digs</dt>
-                <dd className="mt-1 font-mono text-sm text-slate-300">{wins !== undefined ? wins.toString() : "—"}</dd>
+                <dd className="mt-1 font-mono text-sm text-slate-300">{minedWins !== undefined ? minedWins.toString() : "—"}</dd>
               </div>
               <div>
                 <dt className="engraved">Score from</dt>
@@ -63,10 +65,6 @@ export function ShardBalance() {
                 <dd className="mt-1 font-mono text-sm text-slate-300">{formatShard(totalSupply)}</dd>
               </div>
             </dl>
-            <p className="text-xs leading-relaxed text-slate-500">
-              Each winning Dig mints a flat {formatShard(REWARD_PER_WIN)} ${symbol} — earned only, never bought or
-              transferred.
-            </p>
           </>
         )}
       </div>
