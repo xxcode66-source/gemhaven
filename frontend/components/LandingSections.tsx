@@ -14,17 +14,14 @@ const BASESCAN_URL = `https://sepolia.basescan.org/address/${
 /** The three moves of the Hidden Mechanics thesis, in play order. */
 const STEPS = [
   {
-    glyph: "◆",
     title: "Seal your pick",
     copy: "Choose a deposit — or a parity. Your choice is encrypted in this browser with Inco Lightning before it ever leaves your machine.",
   },
   {
-    glyph: "⛏",
     title: "Dig once",
     copy: "One transaction draws the encrypted Motherlode and settles the Dig against it. No rounds, no queue, no reveal window to race.",
   },
   {
-    glyph: "✦",
     title: "Claim what is yours",
     copy: "Only your wallet can decrypt the outcome. Winning ETH — and $SHARD on straight strikes — are paid out the moment you claim.",
   },
@@ -51,15 +48,14 @@ export function LandingSections() {
   const digsSettled = stats ? stats.nextBetId - 1n : undefined;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-24 px-5 pb-28 sm:px-8">
+    <div className="mx-auto max-w-6xl space-y-20 px-5 pb-28 sm:px-8">
       {/* -------------------------------------------- live proof from chain -- */}
-      <motion.section aria-labelledby="live-heading" className="pt-4" {...fadeUp}>
-        <header className="mb-6 flex items-baseline gap-3">
+      <motion.section aria-labelledby="live-heading" className="pt-10" {...fadeUp}>
+        <header className="mb-6 flex items-center gap-3">
           <p className="engraved" id="live-heading">
             Live on Base Sepolia
           </p>
           <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-gem-teal" />
-          <span className="text-xs text-slate-500">read straight from the contract, every few seconds</span>
         </header>
         <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Stat label="House bankroll">
@@ -92,13 +88,9 @@ export function LandingSections() {
               className="rock-panel group p-6 transition-colors hover:border-gem-teal/25"
               {...(reduceMotion ? {} : { ...fadeUp, transition: { delay: i * 0.08 } })}
             >
-              <span
-                aria-hidden
-                className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gem-teal/25 bg-gem-teal/[0.07] text-lg text-gem-teal transition group-hover:border-gem-teal/50"
-              >
-                {step.glyph}
-              </span>
-              <p className="engraved mb-1">Step {i + 1}</p>
+              <p aria-hidden className="mb-3 font-display text-3xl leading-none text-gem-teal/60 transition-colors group-hover:text-gem-teal">
+                {String(i + 1).padStart(2, "0")}
+              </p>
               <h3 className="mb-2 font-display text-xl tracking-wide text-slate-100">{step.title}</h3>
               <p className="text-sm leading-relaxed text-slate-400">{step.copy}</p>
             </motion.li>
@@ -108,19 +100,21 @@ export function LandingSections() {
 
       {/* ---------------------------------------------------- trust strip --- */}
       <motion.section aria-label="Transparency" {...fadeUp}>
-        <ul className="flex flex-wrap items-center justify-center gap-3">
-          <TrustBadge href={BASESCAN_URL}>◆ Contracts verified on BaseScan</TrustBadge>
-          <TrustBadge href={GITHUB_URL}>⌘ Open source on GitHub</TrustBadge>
-          <TrustBadge href="https://www.inco.org">✦ Hidden mechanics by Inco Lightning</TrustBadge>
-          <TrustBadge>⟠ Live on Base Sepolia</TrustBadge>
+        <ul className="flex flex-wrap items-center gap-3">
+          <TrustBadge href={BASESCAN_URL}>Contracts verified on BaseScan</TrustBadge>
+          <TrustBadge href={GITHUB_URL}>Open source on GitHub</TrustBadge>
+          <TrustBadge href="https://www.inco.org">Hidden mechanics by Inco Lightning</TrustBadge>
+          <TrustBadge>Live on Base Sepolia</TrustBadge>
         </ul>
       </motion.section>
 
       {/* -------------------------------------------------------- final CTA -- */}
-      <motion.section className="text-center" {...fadeUp}>
-        <h2 className="mb-3 font-display text-3xl tracking-wide text-slate-100">The wall is open.</h2>
-        <p className="mb-7 text-sm text-slate-400">No account, no deposit flow — connect a wallet and Dig.</p>
-        <Link href="/mine" className="gem-button !px-8 !py-3.5 !text-base">
+      <motion.section className="rock-panel flex flex-col gap-5 p-8 sm:flex-row sm:items-center sm:justify-between" {...fadeUp}>
+        <div>
+          <h2 className="font-display text-2xl tracking-wide text-slate-100">The wall is open.</h2>
+          <p className="mt-1 text-sm text-slate-400">No account, no deposit flow — connect a wallet and Dig.</p>
+        </div>
+        <Link href="/mine" className="gem-button shrink-0 !px-8 !py-3.5 !text-base">
           Enter the Cavern
         </Link>
       </motion.section>

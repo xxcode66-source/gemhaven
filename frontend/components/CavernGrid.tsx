@@ -138,8 +138,8 @@ export function CavernGrid({
                 {isGolden && !reduceMotion && !isStrike && (
                   <span
                     aria-hidden
-                    className="absolute inset-[-8%] animate-ember rounded-full blur-xl"
-                    style={{ background: "radial-gradient(circle, rgba(251,191,106,0.4) 0%, transparent 68%)" }}
+                    className="absolute inset-[-4%] animate-ember rounded-full blur-lg"
+                    style={{ background: "radial-gradient(circle, rgba(251,191,106,0.35) 0%, transparent 66%)" }}
                   />
                 )}
                 <motion.span
