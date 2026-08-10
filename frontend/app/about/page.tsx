@@ -138,7 +138,7 @@ const STEPS = [
   },
   {
     title: "Claim instantly",
-    body: "Decrypt your win bit with your wallet and claim. Straight picks pay 34.92x, parity pays 1.94x, and winning Picks mint 10 $SHARD.",
+    body: "Decrypt your win bit with your wallet and claim. Straight picks pay 34.92x, parity pays 1.94x, and wins mint $SHARD — 10 for a Pick, 2 for parity, 1 for an All grind.",
   },
 ];
 

@@ -1,16 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import { useAccount } from "wagmi";
 
-import { REWARD_PER_WIN, shardIsConfigured } from "@/lib/contracts";
+import { shardIsConfigured } from "@/lib/contracts";
 import { formatShard } from "@/lib/format";
 import { useShardBalance } from "@/lib/hooks";
+import { countCachedWins } from "@/lib/verdicts";
 
 export function ShardBalance() {
   const { isConnected } = useAccount();
   const { balance, totalSupply, symbol, totalMined } = useShardBalance();
 
-  const minedWins = totalMined !== undefined ? totalMined / REWARD_PER_WIN : undefined;
+  // Wins can no longer be derived from totalMined (rates differ per kind), so
+  // the tally comes from this browser's own decrypted verdicts.
+  const [wins] = useState(() => countCachedWins());
 
   return (
     <section aria-labelledby="shard-heading" className="rock-panel p-5">
@@ -54,11 +58,11 @@ export function ShardBalance() {
               </div>
               <div>
                 <dt className="engraved">Winning Digs</dt>
-                <dd className="mt-1 font-mono text-sm text-slate-300">{minedWins !== undefined ? minedWins.toString() : "—"}</dd>
+                <dd className="mt-1 font-mono text-sm text-slate-300">{wins.toString()}</dd>
               </div>
               <div>
-                <dt className="engraved">Score from</dt>
-                <dd className="mt-1 font-mono text-sm text-slate-300">{minedWins !== undefined ? `${minedWins} wins` : "—"}</dd>
+                <dt className="engraved">Per win</dt>
+                <dd className="mt-1 font-mono text-sm text-slate-300">Pick 10 · parity 2 · All 1</dd>
               </div>
               <div>
                 <dt className="engraved">Total minted</dt>

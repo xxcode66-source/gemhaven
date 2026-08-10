@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { Hex } from "viem";
 import { useAccount, useWaitForTransactionReceipt, useWalletClient, useWriteContract } from "wagmi";
 
-import { BET_KIND_LABELS, REWARD_PER_WIN, gemHavenContract, isConfigured, previewPayout } from "@/lib/contracts";
+import { BET_KIND_LABELS, gemHavenContract, isConfigured, previewPayout, shardRewardFor } from "@/lib/contracts";
 import { describeError, formatEth, formatShard } from "@/lib/format";
 import { useActiveChainId, useCavernConfig, usePlayerBets, type PlayerBet } from "@/lib/hooks";
 import { decryptOwnResult, isLiveHandle, revealPublicBit } from "@/lib/inco";
@@ -223,7 +223,7 @@ function BetRow({ bet, onChanged }: { bet: PlayerBet; onChanged: () => void }) {
             >
               {busy === "claim"
                 ? "Claiming…"
-                : `Claim ${formatEth(payout)} ETH${bet.kind === 0 ? ` + ${formatShard(REWARD_PER_WIN)} SHARD` : ""}`}
+                : `Claim ${formatEth(payout)} ETH + ${formatShard(shardRewardFor(bet.kind))} SHARD`}
             </button>
           )}
 

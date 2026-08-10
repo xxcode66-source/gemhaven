@@ -9,7 +9,7 @@ import { useGameStats } from "@/lib/hooks";
 
 const GITHUB_URL = "https://github.com/xxcode66-source/gemhaven";
 const BASESCAN_URL = `https://sepolia.basescan.org/address/${
-  process.env.NEXT_PUBLIC_GEMHAVEN_ADDRESS ?? "0x444b9027c7e76e9c62a8efe1e6364c77b7d5f215"
+  process.env.NEXT_PUBLIC_GEMHAVEN_ADDRESS ?? "0xea9fe3914f659902e285968253e17dc67138e0f7"
 }#code`;
 
 /** The three moves of the Hidden Mechanics thesis, in play order. */
@@ -24,7 +24,7 @@ const STEPS = [
   },
   {
     title: "Claim what is yours",
-    copy: "Only your wallet can decrypt the outcome. Winning ETH — and $SHARD on straight strikes — are paid out the moment you claim.",
+    copy: "Only your wallet can decrypt the outcome. Winning ETH and $SHARD are paid out the moment you claim.",
   },
 ];
 

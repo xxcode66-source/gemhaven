@@ -110,6 +110,24 @@ export const BONANZA_INDEX = 7;
 /** `GemHaven.REWARD_PER_WIN` — fixed 10 SHARD per winning Pick claim. */
 export const REWARD_PER_WIN = 10n * 10n ** 18n;
 
+/** Mirrors of `GemHaven.REWARD_PER_PARITY_WIN` / `REWARD_PER_ALL_WIN`. */
+export const REWARD_PER_PARITY_WIN = 2n * 10n ** 18n;
+export const REWARD_PER_ALL_WIN = 1n * 10n ** 18n;
+
+/** `$SHARD` minted for a winning claim of `kind` — mirrors `shardReward(kind)`. */
+export function shardRewardFor(kind: number): bigint {
+  if (kind === BetKind.Pick) return REWARD_PER_WIN;
+  if (kind === BetKind.All) return REWARD_PER_ALL_WIN;
+  return REWARD_PER_PARITY_WIN;
+}
+
+/** Deposits covered per kind: Pick 1, parity half the wall, All the whole wall. */
+export function coverageOf(kind: number, gridSize: number): number {
+  if (kind === BetKind.All) return gridSize;
+  if (kind === BetKind.Pick) return 1;
+  return gridSize / 2;
+}
+
 export const BPS_DENOMINATOR = 10_000n;
 
 /**

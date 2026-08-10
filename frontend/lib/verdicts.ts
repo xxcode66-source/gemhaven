@@ -27,6 +27,11 @@ export function readVerdict(betId: bigint): boolean | undefined {
   return readCache()[betId.toString()];
 }
 
+/** How many Digs this browser has decrypted as wins (the player's local win tally). */
+export function countCachedWins(): number {
+  return Object.values(readCache()).filter(Boolean).length;
+}
+
 export function storeVerdict(betId: bigint, won: boolean): void {
   try {
     const cache = readCache();

@@ -93,9 +93,12 @@ contract GemHaven {
 
     // ------------------------------------------------------------ constants --
 
-    /// @notice `$SHARD` minted per winning `Pick` claim. Even/Odd/All mint nothing,
-    ///         so auto-betting cannot inflate the supply.
+    /// @notice `$SHARD` minted per winning claim, by kind. Riskier coverage mints
+    ///         more: a straight Pick mints the most, while the always-winning
+    ///         `All` grind mints the least so auto-betting earns only traces.
     uint256 public constant REWARD_PER_WIN = 10e18;
+    uint256 public constant REWARD_PER_PARITY_WIN = 2e18;
+    uint256 public constant REWARD_PER_ALL_WIN = 1e18;
 
     /// @notice Multipliers, expressed as multiplier x 100 (3492 = 34.92x).
     /// @dev ~3% house edge against fair odds of 36x and 2x on a 36-deposit wall.
@@ -239,7 +242,7 @@ contract GemHaven {
         uint256 budget = incoFeeBudget(kind);
         require(msg.value > budget, StakeBelowMinimum());
         uint256 stake = msg.value - budget;
-        require(stake >= (kind == BetKind.All ? minStake * gridSize : minStake), StakeBelowMinimum());
+        require(stake >= minStake * coverageOf(kind), StakeBelowMinimum());
         require(payoutOf(stake, kind) <= maxPayout(), StakeAboveMaximum());
 
         // Top-line cuts, both taken inside the stake: 1% accrues to the
@@ -317,7 +320,7 @@ contract GemHaven {
         uint256 payout = payoutOf(b.stake, b.kind);
         bankroll -= payout;
 
-        uint256 shardMinted = b.kind == BetKind.Pick ? REWARD_PER_WIN : 0;
+        uint256 shardMinted = shardReward(b.kind);
         if (shardMinted != 0) {
             shard.mint(msg.sender, shardMinted);
             // Lifetime mining score. Deliberately the cumulative minted amount,
@@ -354,6 +357,22 @@ contract GemHaven {
     }
 
     // ---------------------------------------------------------------- views --
+
+    /// @notice Deposits covered by each kind: Pick 1, parity half the wall, All
+    ///         the whole wall. Stakes are expressed per covered deposit, so an
+    ///         Odd Dig at 0.001 stakes 0.001 x 18 in total.
+    function coverageOf(BetKind kind) public view returns (uint256) {
+        if (kind == BetKind.All) return uint256(gridSize);
+        if (kind == BetKind.Pick) return 1;
+        return uint256(gridSize) / 2;
+    }
+
+    /// @notice `$SHARD` minted for a winning claim of `kind`.
+    function shardReward(BetKind kind) public pure returns (uint256) {
+        if (kind == BetKind.Pick) return REWARD_PER_WIN;
+        if (kind == BetKind.All) return REWARD_PER_ALL_WIN;
+        return REWARD_PER_PARITY_WIN;
+    }
 
     /// @notice Payout for a winning Dig of `kind` with `stake` (total stake for
     ///         `All`, i.e. per-tile amount times `gridSize`).

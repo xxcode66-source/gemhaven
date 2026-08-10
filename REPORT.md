@@ -9,8 +9,8 @@
 
 | Contract | Address | BaseScan |
 | --- | --- | --- |
-| GemHaven | `0x444b9027c7e76e9c62A8EFe1e6364C77b7D5f215` | [verified](https://sepolia.basescan.org/address/0x444b9027c7e76e9c62a8efe1e6364c77b7d5f215#code) |
-| ShardToken ($SHARD) | `0x944BE2bdC254392dF825Ff0b6Ed48e265Cdc1ED9` | [verified](https://sepolia.basescan.org/address/0x944be2bdc254392df825ff0b6ed48e265cdc1ed9#code) |
+| GemHaven | `0xEa9fe3914F659902E285968253e17dC67138E0F7` | [source](https://sepolia.basescan.org/address/0xea9fe3914f659902e285968253e17dc67138e0f7#code) |
+| ShardToken ($SHARD) | `0xd04A0cf6332e5F10cDFb0b4BA21c0EE708Ac350B` | [source](https://sepolia.basescan.org/address/0xd04a0cf6332e5f10cdfb0b4ba21c0ee708ac350b#code) |
 
 ---
 
@@ -407,8 +407,8 @@ bet() requires payoutOf(stake, kind) ≤ maxPayout() — otherwise StakeAboveMax
 
 | Parameter | Value |
 | --- | --- |
-| GemHaven | `0x444b9027c7e76e9c62A8EFe1e6364C77b7D5f215` (verified) |
-| ShardToken | `0x944BE2bdC254392dF825Ff0b6Ed48e265Cdc1ED9` (verified) |
+| GemHaven | `0xEa9fe3914F659902E285968253e17dC67138E0F7` (v2.6) |
+| ShardToken | `0xd04A0cf6332e5F10cDFb0b4BA21c0EE708Ac350B` (v2.6) |
 | Chain | Base Sepolia, 84532 |
 | Bankroll seed / floor | 0.03543 ETH (bankroll ≈ 0.03641 ETH at report time) |
 | Fee reserve seed | 0.0005 ETH |

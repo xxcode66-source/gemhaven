@@ -17,7 +17,7 @@ import {
   type BetKindValue,
 } from "@/lib/contracts";
 import { describeError, formatEth, formatShard } from "@/lib/format";
-import { REWARD_PER_WIN } from "@/lib/contracts";
+import { coverageOf, shardRewardFor } from "@/lib/contracts";
 import { useActiveChainId, useCavernConfig, useGameStats, useIncoFeeBudget } from "@/lib/hooks";
 import { decryptOwnResult, encryptDeposit, revealPublicBit } from "@/lib/inco";
 import { storeVerdict } from "@/lib/verdicts";
@@ -94,9 +94,10 @@ export function BetControls({
     }
   })();
 
-  // `All` stakes the chosen amount on every deposit; every other kind stakes it once.
-  const totalStake = amountWei !== undefined ? (kind === BetKind.All ? amountWei * BigInt(gridSize) : amountWei) : undefined;
-  const minTotal = minStake !== undefined ? (kind === BetKind.All ? minStake * BigInt(gridSize) : minStake) : undefined;
+  // Stakes are per covered deposit: Pick covers 1, parity half the wall, All all of it.
+  const coverage = coverageOf(kind, gridSize);
+  const totalStake = amountWei !== undefined ? amountWei * BigInt(coverage) : undefined;
+  const minTotal = minStake !== undefined ? minStake * BigInt(coverage) : undefined;
   const payout = totalStake !== undefined ? previewPayout(totalStake, kind, gridSize) : undefined;
   const totalCost = totalStake !== undefined && feeBudget !== undefined ? totalStake + feeBudget : undefined;
 
@@ -131,7 +132,7 @@ export function BetControls({
     if (!address || !publicClient || !walletClient || amountWei === undefined || feeBudget === undefined) {
       return false;
     }
-    const stake = kind === BetKind.All ? amountWei * BigInt(gridSize) : amountWei;
+    const stake = amountWei * BigInt(coverageOf(kind, gridSize));
     // Capture the pick locally so a concurrent state reset cannot race the encrypt.
     const pick = kind === BetKind.Pick ? selected : 0;
     if (kind === BetKind.Pick && pick === null) return false;
@@ -338,7 +339,7 @@ export function BetControls({
         {/* Amount ------------------------------------------------------------ */}
         <div className="space-y-2">
           <label htmlFor="amount" className="engraved block">
-            {kind === BetKind.All ? "Amount per deposit (ETH)" : "Amount (ETH)"}
+            {coverage > 1 ? "Amount per deposit (ETH)" : "Amount (ETH)"}
           </label>
           <div className="flex flex-wrap items-center gap-2">
             {PRESETS.map((preset) => (
@@ -372,7 +373,7 @@ export function BetControls({
             />
           </div>
           <p id="amount-hint" className="text-xs leading-relaxed text-slate-500">
-            {kind === BetKind.All && totalStake !== undefined ? `Total ${formatEth(totalStake, 6)} ETH (× ${gridSize}) · ` : ""}
+            {coverage > 1 && totalStake !== undefined ? `Total ${formatEth(totalStake, 6)} ETH (× ${coverage}) · ` : ""}
             Min {formatEth(minTotal, 6)} ETH · +{formatEth(feeBudget, 7)} ETH Inco fee · 1% Bonanza + 1% protocol fee
             {totalCost !== undefined ? ` · ${formatEth(totalCost, 6)} ETH total` : ""}
           </p>
@@ -386,9 +387,7 @@ export function BetControls({
               <span className="font-mono tabular-nums text-gem-teal [text-shadow:0_0_16px_rgba(62,230,196,0.35)]">
                 {formatEth(payout)} ETH
               </span>
-              {kind === BetKind.Pick ? (
-                <span className="text-slate-400"> + {formatShard(REWARD_PER_WIN)} $SHARD</span>
-              ) : null}
+              <span className="text-slate-400"> + {formatShard(shardRewardFor(kind))} $SHARD</span>
             </p>
             {aboveMax && (
               <p className="text-xs text-amber-200/90">
@@ -428,7 +427,7 @@ export function BetControls({
             <span className={result.won ? "text-amber-200" : "text-slate-400"}>
               Dig #{result.betId.toString()}:{" "}
               {result.won
-                ? `struck — claimed ${formatEth(result.payout)} ETH${kind === BetKind.Pick ? " + 10 $SHARD" : ""}.`
+                ? `struck — claimed ${formatEth(result.payout)} ETH + ${formatShard(shardRewardFor(kind))} $SHARD.`
                 : "missed. Your pick stays sealed — no one can see what it was."}
               {result.bonanza !== undefined && ` Bonanza released: ${formatEth(result.bonanza)} ETH!`}
             </span>

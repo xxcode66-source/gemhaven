@@ -467,6 +467,32 @@ export const gemHavenAbi = [
   },
   {
     "inputs": [],
+    "name": "REWARD_PER_ALL_WIN",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "REWARD_PER_PARITY_WIN",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "REWARD_PER_WIN",
     "outputs": [
       {
@@ -598,6 +624,25 @@ export const gemHavenAbi = [
     "name": "claimBonanza",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum GemHaven.BetKind",
+        "name": "kind",
+        "type": "uint8"
+      }
+    ],
+    "name": "coverageOf",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -879,6 +924,25 @@ export const gemHavenAbi = [
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum GemHaven.BetKind",
+        "name": "kind",
+        "type": "uint8"
+      }
+    ],
+    "name": "shardReward",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "pure",
     "type": "function"
   },
   {

@@ -184,8 +184,8 @@ The script prints the two `NEXT_PUBLIC_*` lines you need next.
 
 | Contract | Address |
 | --- | --- |
-| GemHaven | `0x444b9027c7e76e9c62A8EFe1e6364C77b7D5f215` |
-| ShardToken | `0x944BE2bdC254392dF825Ff0b6Ed48e265Cdc1ED9` |
+| GemHaven | `0xEa9fe3914F659902E285968253e17dC67138E0F7` |
+| ShardToken | `0xd04A0cf6332e5F10cDFb0b4BA21c0EE708Ac350B` |
 
 Both contracts are **verified on BaseScan** — full source, read/write tabs, and constructor args are public at each address page. Deployed 2026-08-10 with `gridSize=36`, `minStake=0.001 ETH`, bankroll seed `0.03543 ETH` (cap just above `0.001 ETH` per Pick), fee reserve `0.0005 ETH`, Inco fee budget 3 units per Dig, `payoutCapBps=10000` (legacy 100% exposure; lower via `setPayoutCapBps` for a deeper mainnet bankroll). Unaudited hackathon code — Base Sepolia is the intended place to play, not mainnet.
 

@@ -5,7 +5,7 @@ import { BaseScanIcon, GitHubIcon } from "@/components/icons";
 
 const GITHUB_URL = "https://github.com/xxcode66-source/gemhaven";
 const BASESCAN_URL =
-  "https://sepolia.basescan.org/address/0x444b9027c7e76e9c62a8efe1e6364c77b7d5f215#code";
+  "https://sepolia.basescan.org/address/0xea9fe3914f659902e285968253e17dc67138e0f7#code";
 
 /**
  * Site footer: play links, transparency links, and the jam credit. Static —
