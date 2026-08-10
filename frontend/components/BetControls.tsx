@@ -385,7 +385,10 @@ export function BetControls({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
             <p className="text-sm text-slate-300">
-              If it lands: <span className="font-mono tabular-nums text-gem-teal">{formatEth(payout)} ETH</span>
+              If it lands:{" "}
+              <span className="font-mono tabular-nums text-gem-teal [text-shadow:0_0_16px_rgba(62,230,196,0.35)]">
+                {formatEth(payout)} ETH
+              </span>
               {kind === BetKind.Pick ? (
                 <span className="text-slate-400"> + {formatShard(REWARD_PER_WIN)} $SHARD</span>
               ) : null}

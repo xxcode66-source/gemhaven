@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { LandingSections } from "@/components/LandingSections";
+
 export default function LandingPage() {
   return (
     <main>
@@ -47,6 +49,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Live proof, mechanics, and trust — one client island below the hero. */}
+      <LandingSections />
     </main>
   );
 }

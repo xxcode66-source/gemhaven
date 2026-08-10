@@ -60,6 +60,11 @@ const config: Config = {
           "0%": { transform: "translateY(6px)", opacity: "0" },
           "100%": { transform: "translateY(0)", opacity: "1" },
         },
+        // The golden deposit's ember halo — slow breathing light behind the tile.
+        ember: {
+          "0%, 100%": { opacity: "0.22" },
+          "50%": { opacity: "0.6" },
+        },
       },
       animation: {
         shimmer: "shimmer 2.6s ease-in-out infinite",
@@ -67,6 +72,7 @@ const config: Config = {
         drift: "drift 26s ease-in-out infinite",
         crack: "crack 900ms cubic-bezier(0.22,1,0.36,1) both",
         riseFade: "riseFade 320ms ease-out both",
+        ember: "ember 3.4s ease-in-out infinite",
       },
     },
   },

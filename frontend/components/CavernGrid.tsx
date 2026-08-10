@@ -134,10 +134,18 @@ export function CavernGrid({
                 className="group relative block w-full disabled:cursor-default"
                 style={{ ["--glow-color" as string]: gem.glow }}
               >
+                {/* The golden deposit breathes a soft ember halo behind its facet. */}
+                {isGolden && !reduceMotion && !isStrike && (
+                  <span
+                    aria-hidden
+                    className="absolute inset-[-8%] animate-ember rounded-full blur-xl"
+                    style={{ background: "radial-gradient(circle, rgba(251,191,106,0.4) 0%, transparent 68%)" }}
+                  />
+                )}
                 <motion.span
                   animate={reduceMotion ? undefined : { scale: isSelected ? 1.05 : 1, y: isSelected ? -3 : 0 }}
                   transition={{ type: "spring", stiffness: 320, damping: 24 }}
-                  className="block"
+                  className="relative block"
                 >
                   {/* The gem body. facet-clip gives the seven-point silhouette. */}
                   <span

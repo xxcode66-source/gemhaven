@@ -2,11 +2,13 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 import { BackgroundFX } from "@/components/BackgroundFX";
+import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://frontend-xxcode.vercel.app"),
   title: "GemHaven — confidential dig-to-earn on Base",
   description:
     "Pick a deposit on the cavern wall, Dig with ETH, and let Inco Lightning keep your choice encrypted until the Motherlode is drawn.",
@@ -15,6 +17,13 @@ export const metadata: Metadata = {
     title: "GemHaven",
     description: "A confidential dig-to-earn cavern on Base. Your pick stays hidden — even from the contract.",
     type: "website",
+    images: [{ url: "/og-banner.png", width: 1792, height: 1024, alt: "GemHaven — a lamp-lit crystal cavern with faceted gem deposits" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GemHaven — confidential dig-to-earn on Base",
+    description: "Pick a deposit, Dig with ETH, and let Inco Lightning keep your choice encrypted until the Motherlode is drawn.",
+    images: ["/og-banner.png"],
   },
 };
 
@@ -38,6 +47,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Providers>
           <Navbar />
           {children}
+          <Footer />
         </Providers>
       </body>
     </html>

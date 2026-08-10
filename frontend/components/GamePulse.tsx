@@ -1,6 +1,6 @@
 "use client";
 
-import { formatEth } from "@/lib/format";
+import { AnimatedEth } from "@/components/AnimatedEth";
 import { useGameStats } from "@/lib/hooks";
 
 /**
@@ -26,11 +26,19 @@ export function GamePulse() {
           closes — play continues for as long as someone is Digging.
         </p>
 
-        <dl className="grid grid-cols-2 gap-4">
-          <Metric label="Bankroll" value={`${formatEth(stats?.bankroll)} ETH`} />
-          <Metric label="Max Pick stake" value={`${formatEth(stats?.maxStake, 6)} ETH`} />
-          <Metric label="Bonanza pot" value={`${formatEth(stats?.bonanzaPot)} ETH`} accent />
-          <Metric label="Protocol fees" value={`${formatEth(stats?.protocolFees)} ETH`} />
+        <dl className="grid grid-cols-2 gap-3">
+          <Metric label="Bankroll">
+            <AnimatedEth wei={stats?.bankroll} /> ETH
+          </Metric>
+          <Metric label="Max Pick stake">
+            <AnimatedEth wei={stats?.maxStake} decimals={6} /> ETH
+          </Metric>
+          <Metric label="Bonanza pot" accent>
+            <AnimatedEth wei={stats?.bonanzaPot} /> ETH
+          </Metric>
+          <Metric label="Protocol fees">
+            <AnimatedEth wei={stats?.protocolFees} /> ETH
+          </Metric>
         </dl>
 
         <div className="space-y-2 rounded-xl border border-amber-300/20 bg-amber-300/[0.05] px-4 py-3">
@@ -47,11 +55,19 @@ export function GamePulse() {
   );
 }
 
-function Metric({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function Metric({ label, accent, children }: { label: string; accent?: boolean; children: React.ReactNode }) {
   return (
-    <div>
+    <div
+      className={`rounded-xl border p-3 transition-colors ${
+        accent
+          ? "border-amber-300/25 bg-amber-300/[0.05]"
+          : "border-white/[0.05] bg-white/[0.02] hover:border-gem-teal/25 hover:bg-white/[0.04]"
+      }`}
+    >
       <dt className="engraved">{label}</dt>
-      <dd className={`mt-1 font-mono text-lg tabular-nums ${accent ? "text-amber-200" : "text-slate-100"}`}>{value}</dd>
+      <dd className={`mt-1 font-mono text-lg tabular-nums ${accent ? "text-amber-200" : "text-slate-100"}`}>
+        {children}
+      </dd>
     </div>
   );
 }
