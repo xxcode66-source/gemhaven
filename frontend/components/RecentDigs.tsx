@@ -8,6 +8,7 @@ import { BET_KIND_LABELS, REWARD_PER_WIN, gemHavenContract, isConfigured, previe
 import { describeError, formatEth, formatShard } from "@/lib/format";
 import { useActiveChainId, useCavernConfig, usePlayerBets, type PlayerBet } from "@/lib/hooks";
 import { decryptOwnResult, isLiveHandle, revealPublicBit } from "@/lib/inco";
+import { readVerdict, storeVerdict } from "@/lib/verdicts";
 
 /** The player's own decrypted verdict, plus the attestation `claim` will verify. */
 type Verdict = { won: boolean; signatures: Hex[] };
@@ -83,7 +84,12 @@ function BetRow({ bet, onChanged }: { bet: PlayerBet; onChanged: () => void }) {
   const { writeContractAsync } = useWriteContract();
   const { config } = useCavernConfig();
 
-  const [verdict, setVerdict] = useState<Verdict | null>(null);
+  const [verdict, setVerdict] = useState<Verdict | null>(() => {
+    // Verdicts decrypted in a previous session are cached locally — the chain
+    // only stores `claimed`, which is true for wins and marked misses alike.
+    const won = readVerdict(bet.betId);
+    return won === undefined ? null : { won, signatures: [] };
+  });
   const [bonanza, setBonanza] = useState<"unknown" | "checking" | "miss" | "claiming">("unknown");
   const [busy, setBusy] = useState<"decrypt" | "claim" | null>(null);
   const [error, setError] = useState("");
@@ -113,6 +119,7 @@ function BetRow({ bet, onChanged }: { bet: PlayerBet; onChanged: () => void }) {
       // Requires a wallet signature. Only this address is on the handle's ACL,
       // so no third party — and no admin — can run this.
       const attested = await decryptOwnResult({ walletClient, handle: bet.resultHandle, chainId });
+      storeVerdict(bet.betId, attested.value);
       setVerdict({ won: attested.value, signatures: attested.signatures });
     } catch (cause) {
       setError(describeError(cause));
@@ -165,11 +172,17 @@ function BetRow({ bet, onChanged }: { bet: PlayerBet; onChanged: () => void }) {
   }
 
   const status = (() => {
-    if (bet.claimed) return { text: verdict?.won ? `Claimed ${formatEth(payout)} ETH` : "Settled", tone: "text-gem-teal", mark: "✓" };
+    if (bet.claimed && verdict?.won) return { text: `Struck — claimed ${formatEth(payout)} ETH`, tone: "text-gem-teal", mark: "★" };
+    if (bet.claimed && verdict && !verdict.won) return { text: "Missed — settled", tone: "text-slate-400", mark: "·" };
+    if (bet.claimed) return { text: "Settled — reveal to see the result", tone: "text-slate-400", mark: "✓" };
     if (verdict?.won) return { text: "Won — ready to claim", tone: "text-amber-200", mark: "★" };
     if (verdict && !verdict.won) return { text: "Missed", tone: "text-slate-400", mark: "·" };
     return { text: "Sealed — decrypt to find out", tone: "text-gem-violet", mark: "◆" };
   })();
+
+  // Cached verdicts carry no attestation, so claiming still needs a fresh
+  // decrypt; the signatures only exist for verdicts decrypted this session.
+  const hasAttestation = (verdict?.signatures.length ?? 0) > 0;
 
   return (
     <div className="rounded-xl border border-white/[0.07] bg-rock-void/50 p-4">
@@ -190,18 +203,18 @@ function BetRow({ bet, onChanged }: { bet: PlayerBet; onChanged: () => void }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {!bet.claimed && own && !verdict && (
+          {own && !hasAttestation && (
             <button
               type="button"
               onClick={decrypt}
               disabled={!walletClient || busy !== null}
               className="gem-button !px-4 !py-2 !text-xs"
             >
-              {busy === "decrypt" ? "Decrypting…" : "Decrypt privately"}
+              {busy === "decrypt" ? "Decrypting…" : bet.claimed ? "Reveal result" : "Decrypt privately"}
             </button>
           )}
 
-          {!bet.claimed && own && verdict?.won && (
+          {!bet.claimed && own && verdict?.won && hasAttestation && (
             <button
               type="button"
               onClick={() => claim(true, verdict.signatures)}
@@ -214,7 +227,7 @@ function BetRow({ bet, onChanged }: { bet: PlayerBet; onChanged: () => void }) {
             </button>
           )}
 
-          {!bet.claimed && own && verdict && !verdict.won && (
+          {!bet.claimed && own && verdict && !verdict.won && hasAttestation && (
             <button
               type="button"
               onClick={() => claim(false, verdict.signatures)}

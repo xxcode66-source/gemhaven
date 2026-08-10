@@ -20,6 +20,7 @@ import { describeError, formatEth, formatShard } from "@/lib/format";
 import { REWARD_PER_WIN } from "@/lib/contracts";
 import { useActiveChainId, useCavernConfig, useGameStats, useIncoFeeBudget } from "@/lib/hooks";
 import { decryptOwnResult, encryptDeposit, revealPublicBit } from "@/lib/inco";
+import { storeVerdict } from "@/lib/verdicts";
 import type { DigOutcome } from "./CavernGrid";
 
 /** Amount presets in ETH, zinc-style. Anything above `maxStake` is capped live. */
@@ -190,6 +191,7 @@ export function BetControls({
     // so no third party — and no admin — can run this.
     const attested = await decryptOwnResult({ walletClient, handle: view.resultHandle, chainId });
     const won = attested.value;
+    storeVerdict(betId, won);
 
     onOutcome(kind === BetKind.Pick && pick !== null ? { pick, won } : null);
 
