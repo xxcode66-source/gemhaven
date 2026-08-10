@@ -81,16 +81,20 @@ function FooterLink({
   const className = "inline-flex items-center gap-2.5 text-slate-400 transition hover:text-gem-teal";
   if (external) {
     return (
-      <a href={href} target="_blank" rel="noreferrer" className={className}>
-        {icon}
-        {children}
-      </a>
+      <li>
+        <a href={href} target="_blank" rel="noreferrer" className={className}>
+          {icon}
+          {children}
+        </a>
+      </li>
     );
   }
   return (
-    <Link href={href} className={className}>
-      {icon}
-      {children}
-    </Link>
+    <li>
+      <Link href={href} className={className}>
+        {icon}
+        {children}
+      </Link>
+    </li>
   );
 }
