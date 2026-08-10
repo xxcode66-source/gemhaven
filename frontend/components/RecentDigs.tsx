@@ -6,7 +6,7 @@ import { useAccount, useWaitForTransactionReceipt, useWalletClient, useWriteCont
 
 import { BET_KIND_LABELS, REWARD_PER_WIN, gemHavenContract, isConfigured, previewPayout } from "@/lib/contracts";
 import { describeError, formatEth, formatShard } from "@/lib/format";
-import { useActiveChainId, useBet, useCavernConfig, usePlayerBets, type PlayerBet } from "@/lib/hooks";
+import { useActiveChainId, useCavernConfig, usePlayerBets, type PlayerBet } from "@/lib/hooks";
 import { decryptOwnResult, isLiveHandle, revealPublicBit } from "@/lib/inco";
 
 /** The player's own decrypted verdict, plus the attestation `claim` will verify. */
@@ -20,19 +20,6 @@ export function RecentDigs({ onChanged }: { onChanged: () => void }) {
   const { bets, isLoading, refetch } = usePlayerBets();
 
   const [visible, setVisible] = useState(INITIAL_VISIBLE);
-  const [extraIds, setExtraIds] = useState<bigint[]>([]);
-  const [jumpInput, setJumpInput] = useState("");
-
-  // Claims never expire on chain, so any historical Dig can be reopened by id.
-  const openOlder = () => {
-    const trimmed = jumpInput.trim();
-    if (!/^\d+$/.test(trimmed)) return;
-    const id = BigInt(trimmed);
-    if (id < 1n) return;
-    if (bets.some((b) => b.betId === id) || extraIds.some((x) => x === id)) return;
-    setExtraIds((prev) => [...prev, id]);
-    setJumpInput("");
-  };
 
   const refresh = async () => {
     await refetch();
@@ -63,9 +50,7 @@ export function RecentDigs({ onChanged }: { onChanged: () => void }) {
         ) : (
           <div className="space-y-4">
             {isLoading && bets.length === 0 && <p className="text-xs text-slate-500">Reading your Digs…</p>}
-            {!isLoading && bets.length === 0 && extraIds.length === 0 && (
-              <p className="text-xs text-slate-500">No Digs yet from this wallet.</p>
-            )}
+            {!isLoading && bets.length === 0 && <p className="text-xs text-slate-500">No Digs yet from this wallet.</p>}
 
             <ul className="space-y-3">
               {shown.map((bet) => (
@@ -84,51 +69,11 @@ export function RecentDigs({ onChanged }: { onChanged: () => void }) {
                 Show all {bets.length} Digs
               </button>
             )}
-
-            {extraIds.map((betId) => (
-              <OlderBet key={betId.toString()} betId={betId} onChanged={refresh} />
-            ))}
-
-            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-3">
-              <label htmlFor="older-bet" className="engraved">
-                Open an older Dig by id
-              </label>
-              <input
-                id="older-bet"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={jumpInput}
-                onChange={(event) => setJumpInput(event.target.value)}
-                onKeyDown={(event) => event.key === "Enter" && openOlder()}
-                placeholder="3"
-                className="w-24 rounded-lg border border-white/10 bg-rock-void/80 px-3 py-1.5 font-mono text-sm text-slate-100 outline-none transition focus:border-gem-teal/50"
-              />
-              <button type="button" onClick={openOlder} className="gem-button !px-4 !py-1.5 !text-xs">
-                Open
-              </button>
-              <p className="text-xs text-slate-500">
-                Claims never expire — any Dig you ever made can be reopened here by its id.
-              </p>
-            </div>
           </div>
         )}
       </div>
     </section>
   );
-}
-
-/** Loads any historical Dig on demand; claims have no expiry on chain. */
-function OlderBet({ betId, onChanged }: { betId: bigint; onChanged: () => void }) {
-  const { bet, isLoading, isError } = useBet(betId);
-
-  if (isLoading) {
-    return <p className="text-xs text-slate-500">Reading Dig #{betId.toString()}…</p>;
-  }
-  // `getBet` reverts for ids that were never placed.
-  if (isError || !bet) {
-    return <p className="text-xs text-slate-500">Dig #{betId.toString()} does not exist on this deployment.</p>;
-  }
-  return <BetRow bet={bet} onChanged={onChanged} />;
 }
 
 function BetRow({ bet, onChanged }: { bet: PlayerBet; onChanged: () => void }) {

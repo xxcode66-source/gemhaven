@@ -206,40 +206,6 @@ export function usePlayerBets(): { bets: PlayerBet[]; isLoading: boolean; refetc
   };
 }
 
-/** One Dig by id, for reopening older bets. Reverts surface as `isError`. */
-export function useBet(betId: bigint | undefined): {
-  bet: (PlayerBet & { betId: bigint }) | undefined;
-  isLoading: boolean;
-  isError: boolean;
-} {
-  const chainId = useActiveChainId();
-
-  const query = useReadContract({
-    ...gemHavenContract,
-    functionName: "getBet",
-    args: [betId ?? 0n],
-    chainId,
-    query: { enabled: isConfigured && betId !== undefined, refetchInterval: 10_000 },
-  });
-
-  const raw = query.data;
-  const bet = useMemo(() => {
-    if (!raw || betId === undefined) return undefined;
-    return {
-      betId,
-      player: raw.player,
-      stake: raw.stake,
-      kind: raw.kind,
-      claimed: raw.claimed,
-      bonanzaPaid: raw.bonanzaPaid,
-      resultHandle: raw.resultHandle,
-      bonanzaHandle: raw.bonanzaHandle,
-    };
-  }, [raw, betId]);
-
-  return { bet, isLoading: query.isLoading, isError: query.isError };
-}
-
 /** $SHARD balance, supply, and the lifetime mining score for the connected wallet. */
 export function useShardBalance() {
   const chainId = useActiveChainId();
