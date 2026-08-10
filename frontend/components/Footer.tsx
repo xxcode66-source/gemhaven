@@ -1,4 +1,7 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
+
+import { BaseScanIcon, GitHubIcon } from "@/components/icons";
 
 const GITHUB_URL = "https://github.com/xxcode66-source/gemhaven";
 const BASESCAN_URL =
@@ -13,9 +16,8 @@ export function Footer() {
     <footer className="mt-24 border-t border-white/[0.06] bg-rock-deep/50 backdrop-blur-sm">
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-12 sm:grid-cols-3 sm:px-8">
         <div>
-          <p className="flex items-baseline gap-2.5">
-            <span aria-hidden className="text-sm text-gem-teal [text-shadow:0_0_14px_rgba(62,230,196,0.7)]">◆</span>
-            <span className="font-display text-lg tracking-[0.25em] text-slate-100">GEMHAVEN</span>
+          <p className="font-display text-lg tracking-[0.25em] text-slate-100">
+            GEM<span className="text-gem-teal">HAVEN</span>
           </p>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-slate-500">
             A confidential dig-to-earn cavern. Picks are sealed with Inco Lightning; draws settle in the same
@@ -35,16 +37,20 @@ export function Footer() {
         <nav aria-label="Transparency">
           <p className="engraved mb-3">Transparency</p>
           <ul className="space-y-2 text-sm">
-            <FooterLink href={BASESCAN_URL} external>
+            <FooterLink href={BASESCAN_URL} external icon={<BaseScanIcon className="h-4 w-4 shrink-0" />}>
               Contract on BaseScan
             </FooterLink>
-            <FooterLink href={GITHUB_URL} external>
+            <FooterLink href={GITHUB_URL} external icon={<GitHubIcon className="h-4 w-4 shrink-0" />}>
               Source on GitHub
             </FooterLink>
-            <FooterLink href={`${GITHUB_URL}/blob/main/REPORT.md`} external>
+            <FooterLink
+              href={`${GITHUB_URL}/blob/main/REPORT.md`}
+              external
+              icon={<GitHubIcon className="h-4 w-4 shrink-0" />}
+            >
               Audit report
             </FooterLink>
-            <FooterLink href="https://www.inco.org" external>
+            <FooterLink href="https://www.inco.org" external icon={<span aria-hidden className="w-4 shrink-0 text-center text-gem-teal">◆</span>}>
               Inco Lightning
             </FooterLink>
           </ul>
@@ -61,20 +67,29 @@ export function Footer() {
   );
 }
 
-function FooterLink({ href, external, children }: { href: string; external?: boolean; children: React.ReactNode }) {
-  const className = "text-slate-400 transition hover:text-gem-teal";
+function FooterLink({
+  href,
+  external,
+  icon,
+  children,
+}: {
+  href: string;
+  external?: boolean;
+  icon?: ReactNode;
+  children: ReactNode;
+}) {
+  const className = "inline-flex items-center gap-2.5 text-slate-400 transition hover:text-gem-teal";
   if (external) {
     return (
       <a href={href} target="_blank" rel="noreferrer" className={className}>
+        {icon}
         {children}
-        <span aria-hidden className="ml-1.5 text-[0.65rem] text-slate-600">
-          ↗
-        </span>
       </a>
     );
   }
   return (
     <Link href={href} className={className}>
+      {icon}
       {children}
     </Link>
   );

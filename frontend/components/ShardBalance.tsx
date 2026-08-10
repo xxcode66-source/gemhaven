@@ -64,9 +64,8 @@ export function ShardBalance() {
               </div>
             </dl>
             <p className="text-xs leading-relaxed text-slate-500">
-              Each winning Dig mints a flat {formatShard(REWARD_PER_WIN)} ${symbol}. Your mining score is the lifetime
-              total minted to this wallet — it cannot be bought or transferred, only earned. If a GemHaven token ever
-              launches, allocations are planned to weight this score. (Roadmap, not a promise.)
+              Each winning Dig mints a flat {formatShard(REWARD_PER_WIN)} ${symbol} — earned only, never bought or
+              transferred.
             </p>
           </>
         )}

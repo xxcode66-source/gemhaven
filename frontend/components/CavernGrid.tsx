@@ -80,20 +80,11 @@ export function CavernGrid({
 
   return (
     <section id="cavern" aria-labelledby="cavern-heading" className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="engraved">The cavern wall</p>
-          <h2 id="cavern-heading" className="font-display text-2xl tracking-wide text-slate-100">
-            {kind === BetKind.Pick ? "Choose a deposit" : kind === BetKind.All ? "The whole wall" : "Parity Dig"}
-          </h2>
-        </div>
-        <p className="max-w-sm text-sm leading-relaxed text-slate-400">
-          {kind === BetKind.Pick
-            ? "Your choice is encrypted in this browser and submitted as ciphertext. The chain never learns which deposit you picked."
-            : kind === BetKind.All
-              ? "An All Dig stakes your amount on every deposit at once — the whole wall lights up, and one tile always pays."
-              : "Even and Odd cover the 18 deposits whose numbers match the parity — they light up below. Your pick slot still carries a sealed placeholder so every Dig looks identical on chain."}
-        </p>
+      <header>
+        <p className="engraved">The cavern wall</p>
+        <h2 id="cavern-heading" className="font-display text-2xl tracking-wide text-slate-100">
+          {kind === BetKind.Pick ? "Choose a deposit" : kind === BetKind.All ? "The whole wall" : "Parity Dig"}
+        </h2>
       </header>
 
       <ul

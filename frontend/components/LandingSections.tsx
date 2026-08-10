@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { AnimatedEth, AnimatedInt } from "@/components/AnimatedEth";
+import { BaseIcon } from "@/components/icons";
 import { useGameStats } from "@/lib/hooks";
 
 const GITHUB_URL = "https://github.com/xxcode66-source/gemhaven";
@@ -104,7 +105,7 @@ export function LandingSections() {
           <TrustBadge href={BASESCAN_URL}>Contracts verified on BaseScan</TrustBadge>
           <TrustBadge href={GITHUB_URL}>Open source on GitHub</TrustBadge>
           <TrustBadge href="https://www.inco.org">Hidden mechanics by Inco Lightning</TrustBadge>
-          <TrustBadge>Live on Base Sepolia</TrustBadge>
+          <TrustBadge icon={<BaseIcon className="h-3.5 w-3.5 rounded-full" />}>Live on Base Sepolia</TrustBadge>
         </ul>
       </motion.section>
 
@@ -141,7 +142,7 @@ function Unit({ children }: { children: React.ReactNode }) {
   return <span className="text-xs text-slate-500">{children}</span>;
 }
 
-function TrustBadge({ href, children }: { href?: string; children: React.ReactNode }) {
+function TrustBadge({ href, icon, children }: { href?: string; icon?: React.ReactNode; children: React.ReactNode }) {
   const badge =
     "inline-flex items-center gap-2 rounded-full border border-white/[0.09] bg-white/[0.03] px-4 py-2 text-xs text-slate-300 backdrop-blur-sm transition";
   return (
@@ -153,10 +154,14 @@ function TrustBadge({ href, children }: { href?: string; children: React.ReactNo
           rel="noreferrer"
           className={`${badge} hover:border-gem-teal/35 hover:text-gem-teal`}
         >
+          {icon}
           {children}
         </a>
       ) : (
-        <span className={badge}>{children}</span>
+        <span className={badge}>
+          {icon}
+          {children}
+        </span>
       )}
     </li>
   );

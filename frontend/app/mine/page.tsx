@@ -33,10 +33,7 @@ export default function MinePage() {
           Pick a deposit. Keep it secret. Win the moment you Dig.
         </h1>
         <p className="text-balance leading-relaxed text-slate-400">
-          One wall of {config ? config.gridSize : 36} deposits, one hidden Motherlode per Dig. Your pick is encrypted
-          in your browser by Inco Lightning and compared to the draw without ever being decrypted — the result settles
-          in the same transaction. Straight picks pay 34.92x; parity pays 1.94x; the golden deposit can release the
-          Bonanza pot at any time.
+          Straight picks pay 34.92x, parity 1.94x — and the golden deposit can release the Bonanza pot at any time.
         </p>
       </header>
 
@@ -94,11 +91,6 @@ function PrivacyNote() {
             the Dig.
           </li>
         </ol>
-        <p className="text-xs leading-relaxed text-slate-500">
-          Which deposit a Pick chose is never revealed — not to other players, not to the contract owner, not to the
-          player&apos;s own transaction history. Even and Odd Digs carry a sealed placeholder pick, so every Dig looks
-          identical on chain.
-        </p>
       </div>
     </section>
   );

@@ -295,13 +295,11 @@ export function BetControls({
   return (
     <section aria-labelledby="bet-heading" className="rock-panel p-5">
       <div className="relative space-y-5">
-        <header className="flex items-baseline justify-between gap-3">
-          <div>
-            <p className="engraved">Place a Dig</p>
-            <h2 id="bet-heading" className="font-display text-xl tracking-wide text-slate-100">
-              Instant resolution — every Dig settles in its own transaction
-            </h2>
-          </div>
+        <header>
+          <p className="engraved">Place a Dig</p>
+          <h2 id="bet-heading" className="font-display text-xl tracking-wide text-slate-100">
+            One transaction, start to finish
+          </h2>
         </header>
 
         {/* Bet kind ---------------------------------------------------------- */}
@@ -372,12 +370,9 @@ export function BetControls({
             />
           </div>
           <p id="amount-hint" className="text-xs leading-relaxed text-slate-500">
-            {kind === BetKind.All && totalStake !== undefined
-              ? `Total staked ${formatEth(totalStake, 6)} ETH (amount × ${gridSize}). `
-              : ""}
-            Within every stake, 1% feeds the Bonanza pot and 1% is the protocol fee. Minimum{" "}
-            {formatEth(minTotal, 6)} ETH. Each Dig also carries {formatEth(feeBudget, 7)} ETH for Inco compute fees
-            {totalCost !== undefined ? <> — {formatEth(totalCost, 6)} ETH total.</> : "."}
+            {kind === BetKind.All && totalStake !== undefined ? `Total ${formatEth(totalStake, 6)} ETH (× ${gridSize}) · ` : ""}
+            Min {formatEth(minTotal, 6)} ETH · +{formatEth(feeBudget, 7)} ETH Inco fee · 1% Bonanza + 1% protocol fee
+            {totalCost !== undefined ? ` · ${formatEth(totalCost, 6)} ETH total` : ""}
           </p>
         </div>
 
