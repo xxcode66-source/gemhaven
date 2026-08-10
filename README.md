@@ -112,7 +112,7 @@ frontend/
 ```
     encrypt pick (browser)                      ┌─────────────────────────┐
             │                                   │  bet(ct, kind) payable  │
-            ▼                                   │  • splits 1% / 99%      │
+            ▼                                   │  • splits 1% / 1% / 98% │
     bet() in one tx ───────────────────────────▶│  • draws Motherlode     │
                                                 │  • seals won-bit → you  │
                                                 │  • reveals bonanza bit  │
@@ -148,7 +148,7 @@ Covalidator signatures come back from the SDK as `Uint8Array[]`. viem needs `0x`
 
 `newEuint256`, `randBounded`, and each FHE operation cost `inco.getFee()`, charged against **GemHaven's own ETH balance**. So a Dig must fund its own compute:
 
-- `incoFeeBudget(kind)` = `inco.getFee() × units`, where units are 5 for Pick/All and 6 for Even/Odd (parity costs one extra `rem`). v2 is O(1) per Dig — v1's O(gridSize) comparisons are gone, which is what makes the 36-tile wall cheap.
+- `incoFeeBudget(kind)` = `inco.getFee() × 3` for every kind: exactly two Inco ops per Dig carry a fee — the sealed pick (`newEuint256`) and the draw (`randBounded`) — plus one unit of headroom. Comparisons, `rem`, reveals and access-control ops are free (verified against the Inco fee schedule). v2 is O(1) per Dig — v1's O(gridSize) comparisons are gone, which is what makes the 36-tile wall cheap.
 - `bet()` requires `msg.value > incoFeeBudget(kind)`; the stake is the remainder. Staked ETH is never spent on compute.
 - `surplusETH()` treats `bankroll + bonanzaPot + fee floor` as owed. `withdrawSurplus` can only take what sits above that, so it can never touch player-owed ETH or strand in-flight Digs.
 - Deploy seeds the fee buffer with `INCO_FEE_RESERVE_WEI` so the very first Dig can draw. Plain ETH transfers to GemHaven also top it up (`receive()`).
@@ -215,7 +215,7 @@ Base Sepolia (84532) is the default chain. Base mainnet (8453) is kept in the wa
 4. For **Pick**, select a Deposit on the wall. Your pick is encrypted client-side; the transaction sends `stake + incoFeeBudget(kind)`.
 5. The Dig settles in its own transaction. The UI automatically decrypts your bit and claims for you if you won; if the draw hit the golden Deposit it claims the Bonanza too.
 6. **Auto** repeats the same Dig with a short delay until you switch it off or something errors.
-7. Anything you forgot about lives in **History** — claims never expire, and any historical Dig can be reopened by its id.
+7. Anything you forgot about lives in **History** — claims never expire, so any unclaimed Dig can be decrypted and claimed from the list however long ago it happened.
 
 ---
 
