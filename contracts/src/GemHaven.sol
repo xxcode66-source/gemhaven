@@ -214,7 +214,10 @@ contract GemHaven {
     /// @dev Send the starting bankroll as the constructor's `msg.value`.
     constructor(address shard_, uint8 gridSize_, uint256 minStake_) payable {
         require(shard_ != address(0), ZeroAddress());
-        require(gridSize_ >= 2 && gridSize_ <= MAX_GRID_SIZE, InvalidGridSize());
+        // `> BONANZA_INDEX` (not `>= 2`): a grid too small to contain the
+        // golden deposit would still take the 1% pot cut on every Dig but
+        // could never trigger a Bonanza, locking the pot forever.
+        require(gridSize_ > BONANZA_INDEX && gridSize_ <= MAX_GRID_SIZE, InvalidGridSize());
         require(minStake_ != 0, StakeBelowMinimum());
 
         shard = IShardMintable(shard_);
@@ -345,8 +348,12 @@ contract GemHaven {
         require(!b.bonanzaPaid, BonanzaAlreadyPaid());
         require(e.verifyDecryption(b.encBonanza, hit, signatures), BadAttestation());
 
-        b.bonanzaPaid = true;
+        // A `false` attestation is deliberately stateless: anyone can decrypt
+        // the publicly-revealed bit, so letting a `false` claim burn the flag
+        // would let a griefer front-run the player and orphan their pot.
+        // Only a real hit marks the Dig as paid.
         if (!hit) return;
+        b.bonanzaPaid = true;
 
         uint256 pot = bonanzaPot;
         bonanzaPot = 0;
