@@ -23,7 +23,7 @@ import { useActiveChainId, useCavernConfig, useGameStats, useIncoFeeBudget } fro
 import { decryptOwnResult, encryptDeposit } from "@/lib/inco";
 import { isMuted, playDig, playLose, playPick, playWin, setMuted } from "@/lib/sfx";
 import { storeVerdict } from "@/lib/verdicts";
-import type { DigOutcome } from "./CavernGrid";
+import type { DigOutcome } from "./MotherlodeWheel";
 
 /** Amount presets in ETH, zinc-style. Anything above `maxStake` is capped live. */
 const PRESETS = ["0.001", "0.005", "0.01", "0.05", "0.1", "1"] as const;
@@ -207,7 +207,8 @@ export function BetControls({
     const won = attested.value;
     storeVerdict(betId, won);
 
-    onOutcome(kind === BetKind.Pick && pick !== null ? { pick, won, id: betId } : null);
+    // Parity and All Digs carry no pick — the wheel veils instead of pointing.
+    onOutcome({ pick: kind === BetKind.Pick ? pick : null, won, id: betId });
 
     if (won) playWin();
     else playLose();

@@ -89,6 +89,17 @@
     animation: tile-sway 7s ease-in-out infinite;
     transform-style: preserve-3d;
   }
+
+  /* The Motherlode wheel: after a settle that must not point at any number,
+     the rim frosts over — the draw stays as hidden on screen as on chain. */
+  .wheel-ring {
+    transition: filter 1.3s ease, opacity 1.3s ease;
+  }
+
+  .wheel-veil {
+    filter: blur(5px) saturate(0.72);
+    opacity: 0.45;
+  }
 }
 
 @keyframes tile-sway {

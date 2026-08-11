@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://frontend-xxcode.vercel.app"),
   title: "GemHaven — confidential dig-to-earn on Base",
   description:
-    "Pick a deposit on the cavern wall, Dig with ETH, and let Inco Lightning keep your choice encrypted until the Motherlode is drawn.",
+    "Pick a slot on the Motherlode wheel, Dig with ETH, and let Inco Lightning keep your choice encrypted until the draw is revealed.",
   applicationName: "GemHaven",
   openGraph: {
     title: "GemHaven",
@@ -41,7 +41,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           href="#cavern"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:border focus:border-gem-teal/40 focus:bg-rock-deep focus:px-4 focus:py-2 focus:text-sm focus:text-gem-teal"
         >
-          Skip to the cavern wall
+          Skip to the Motherlode wheel
         </a>
         <BackgroundFX />
         <Providers>

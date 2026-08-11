@@ -65,6 +65,11 @@ const config: Config = {
           "0%, 100%": { opacity: "0.22" },
           "50%": { opacity: "0.6" },
         },
+        // The Motherlode hub glyph while a draw is in flight.
+        spinSlow: {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
       },
       animation: {
         shimmer: "shimmer 2.6s ease-in-out infinite",
@@ -73,6 +78,7 @@ const config: Config = {
         crack: "crack 900ms cubic-bezier(0.22,1,0.36,1) both",
         riseFade: "riseFade 320ms ease-out both",
         ember: "ember 3.4s ease-in-out infinite",
+        "spin-slow": "spinSlow 2.4s linear infinite",
       },
     },
   },

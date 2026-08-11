@@ -3,8 +3,8 @@
 import { useCallback, useState } from "react";
 
 import { BetControls } from "@/components/BetControls";
-import { CavernGrid, type DigOutcome } from "@/components/CavernGrid";
 import { GamePulse } from "@/components/GamePulse";
+import { MotherlodeWheel, type DigOutcome } from "@/components/MotherlodeWheel";
 import { RecentDigs } from "@/components/RecentDigs";
 import { ShardBalance } from "@/components/ShardBalance";
 import { BetKind, type BetKindValue } from "@/lib/contracts";
@@ -29,9 +29,9 @@ export default function MinePage() {
   return (
     <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-10">
       <header className="max-w-2xl space-y-3">
-        <p className="engraved">The cavern wall</p>
+        <p className="engraved">The Motherlode wheel</p>
         <h1 className="text-balance font-display text-3xl leading-tight tracking-wide text-slate-50 sm:text-4xl">
-          Pick a deposit. Keep it secret. Win the moment you Dig.
+          Pick a slot. Keep it secret. Win the moment you Dig.
         </h1>
         <p className="text-balance leading-relaxed text-slate-400">
           Straight picks pay 34.92x, parity 1.94x — and the golden deposit can release the Bonanza pot at any time.
@@ -40,7 +40,7 @@ export default function MinePage() {
 
       <div className="mt-8 grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <CavernGrid
+          <MotherlodeWheel
             gridSize={config?.gridSize ?? 36}
             kind={kind}
             selected={selected}
