@@ -7,14 +7,18 @@
  * read "Settled" in history and the player's wins become invisible.
  *
  * A verdict is private to the player by design, so the browser is exactly
- * the right place to remember it.
+ * the right place to remember it. The cache is namespaced per deployment,
+ * so switching contract addresses starts the local win tally fresh instead
+ * of mixing Digs from another contract.
  */
-const KEY = "gemhaven:verdicts";
+const DEPLOYMENT = process.env.NEXT_PUBLIC_GEMHAVEN_ADDRESS ?? "unknown";
+const KEY = `gemhaven:verdicts:${DEPLOYMENT.toLowerCase()}`;
 
 type Cache = Record<string, boolean>;
 
 function readCache(): Cache {
   try {
+    if (typeof window === "undefined") return {};
     const raw = localStorage.getItem(KEY);
     return raw ? (JSON.parse(raw) as Cache) : {};
   } catch {

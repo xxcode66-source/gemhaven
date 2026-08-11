@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { BetControls } from "@/components/BetControls";
 import { GamePulse } from "@/components/GamePulse";
 import { MotherlodeWheel, type DigOutcome } from "@/components/MotherlodeWheel";
-import { RecentDigs } from "@/components/RecentDigs";
 import { ShardBalance } from "@/components/ShardBalance";
 import { BetKind, type BetKindValue } from "@/lib/contracts";
 import { useCavernConfig, useGameStats } from "@/lib/hooks";
@@ -21,6 +20,15 @@ export default function MinePage() {
   const [selected, setSelected] = useState<number | null>(null);
   const [outcome, setOutcome] = useState<DigOutcome | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // The verdict lingers long enough to land — settle spin included, roughly
+  // four seconds on Struck/Sealed — then the wheel returns to its idle face.
+  // The claim itself lives over in History, not here.
+  useEffect(() => {
+    if (!outcome) return;
+    const timer = setTimeout(() => setOutcome(null), 6_500);
+    return () => clearTimeout(timer);
+  }, [outcome]);
 
   const refreshAll = useCallback(async () => {
     await refetchStats();
@@ -60,7 +68,6 @@ export default function MinePage() {
             onChanged={refreshAll}
             onBusyChange={setBusy}
           />
-          <RecentDigs onChanged={refreshAll} />
         </div>
 
         <aside className="space-y-6">

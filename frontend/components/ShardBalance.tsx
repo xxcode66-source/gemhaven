@@ -50,8 +50,12 @@ export function ShardBalance() {
   const { balance, totalSupply, symbol, totalMined } = useShardBalance();
 
   // Wins can no longer be derived from totalMined (rates differ per kind), so
-  // the tally comes from this browser's own decrypted verdicts.
-  const [wins] = useState(() => countCachedWins());
+  // the tally comes from this browser's own decrypted verdicts. Re-read when
+  // the balance moves so a fresh claim or win lands without a page reload.
+  const [wins, setWins] = useState<number | null>(null);
+  useEffect(() => {
+    setWins(countCachedWins());
+  }, [balance]);
   const balanceDisplay = useCountUpShard(balance);
 
   return (
@@ -87,7 +91,9 @@ export function ShardBalance() {
           <>
             <div>
               <p className="font-mono text-4xl tabular-nums text-slate-100">{balanceDisplay}</p>
-              <p className="mt-1 text-xs text-slate-500">total ${symbol} earned — mined only, never bought</p>
+              <p className="mt-1 text-xs text-slate-500">
+                ${symbol} in your wallet — minted the moment you claim a winning Dig, never bought
+              </p>
             </div>
             <dl className="grid grid-cols-2 gap-3 text-xs">
               <div>
@@ -96,7 +102,7 @@ export function ShardBalance() {
               </div>
               <div>
                 <dt className="engraved">Winning Digs</dt>
-                <dd className="mt-1 font-mono text-sm text-slate-300">{wins.toString()}</dd>
+                <dd className="mt-1 font-mono text-sm text-slate-300">{wins === null ? "—" : wins.toString()}</dd>
               </div>
               <div>
                 <dt className="engraved">Per win</dt>

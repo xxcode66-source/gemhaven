@@ -260,7 +260,7 @@ export function MotherlodeWheel({
                   ★
                 </span>
                 <p className="font-display text-sm tracking-wide text-amber-200">Struck!</p>
-                <p className="px-3 text-[0.65rem] leading-snug text-slate-500">claim it in your Recent Digs</p>
+                <p className="px-3 text-[0.65rem] leading-snug text-slate-500">claim it in your History</p>
               </>
             ) : (
               <>

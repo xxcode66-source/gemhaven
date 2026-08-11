@@ -216,7 +216,7 @@ export function BetControls({
     const payoutWei = won ? previewPayout(stake, kind, gridSize) : 0n;
 
     // No claim here on purpose: the verdict is shown immediately, and the
-    // payout (plus the bonanza check) is collected from the Recent Digs row,
+    // payout (plus the bonanza check) is collected from the History page,
     // so a Dig stays one fast transaction even when it strikes.
     setResult({ betId, won, payout: payoutWei });
     await refetchStats();
@@ -442,7 +442,7 @@ export function BetControls({
               <p className="mt-0.5 text-xs text-slate-400">
                 Dig #{result.betId.toString()}: {" "}
                 {result.won
-                  ? `${formatEth(result.payout)} ETH + ${formatShard(shardRewardFor(kind))} $SHARD — claim it in your Recent Digs below.`
+                  ? `${formatEth(result.payout)} ETH + ${formatShard(shardRewardFor(kind))} $SHARD — claim it in your History.`
                   : "your pick stays sealed — no one can see what it was."}
               </p>
             </motion.div>
