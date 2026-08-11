@@ -16,7 +16,7 @@ contract Retire is Script {
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(pk);
-        IRetirable retiring = IRetirable(0x630f27F52018b62244fA8492945c44A3F2105520); // v2.4
+        IRetirable retiring = IRetirable(0xEa9fe3914F659902E285968253e17dC67138E0F7); // v2.6
 
         vm.startBroadcast(pk);
         retiring.shutdownTo(deployer);

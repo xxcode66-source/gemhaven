@@ -1,16 +1,16 @@
-# GemHaven v2.5 — Full Audit Report
+# GemHaven v2.7 — Full Audit Report
 
 **Confidential instant dig-to-earn on Base · Built for the Inco Summer Game Jam (Hidden Mechanics track)**
 
-- **Report date:** 2026-08-10
+- **Report date:** 2026-08-11 (v2.7 update of the 2026-08-10 v2.5 report; the game-logic audit section was re-run against v2.7 and its findings M-1/L-1/L-2 below are all resolved)
 - **Scope:** everything — game mechanics, privacy model, complete money flow, fees, smart-contract security, Inco Lightning integration, frontend, deployment operations
 - **Live deployment:** Base Sepolia (chain 84532)
 - **Demo:** https://frontend-xxcode.vercel.app · **Repo:** https://github.com/xxcode66-source/gemhaven
 
 | Contract | Address | BaseScan |
 | --- | --- | --- |
-| GemHaven | `0xEa9fe3914F659902E285968253e17dC67138E0F7` | [source](https://sepolia.basescan.org/address/0xea9fe3914f659902e285968253e17dc67138e0f7#code) |
-| ShardToken ($SHARD) | `0xd04A0cf6332e5F10cDFb0b4BA21c0EE708Ac350B` | [source](https://sepolia.basescan.org/address/0xd04a0cf6332e5f10cdfb0b4ba21c0ee708ac350b#code) |
+| GemHaven | `0xe7eb298AfEE79F40f35CEfdCFcccBCBcC2754411` | [source](https://sepolia.basescan.org/address/0xe7eb298afee79f40f35cefdcfcccbcbcc2754411#code) |
+| ShardToken ($SHARD) | `0xeA97A1748360412e2E9D3d900D1Fe2a614E1D2a8` | [source](https://sepolia.basescan.org/address/0xea97a1748360412e2e9d3d900d1fe2a614e1d2a8#code) |
 
 ---
 
@@ -20,7 +20,7 @@ GemHaven is an instant, house-settled casino-style game in which **the player's 
 
 Beyond the privacy core, the project ships a complete house-economy layer (bankroll solvency machinery, rolling jackpot, protocol fee, profit skimming with a protected capital floor, fee-reserve management, clean redeploy/retirement lifecycle) and a polished Next.js frontend built on a single thin Inco SDK boundary.
 
-**Verdict:** production-grade for a testnet jam entry. The privacy guarantee is enforced structurally (no code path can leak the pick). Security findings are two low-to-medium economic edge cases and informational hardening notes — none exploitable to steal player funds. Open items are test coverage (Foundry + Inco cheatcodes) and one optional mainnet-hardening decision (lower `payoutCapBps`).
+**Verdict:** production-grade for a testnet jam entry. The privacy guarantee is enforced structurally (no code path can leak the pick). The v2.7 game-logic audit re-verified the economics (uniform ~3% edge across all kinds, hedge-proof by construction — no combination of Pick/Even/Odd/All can raise expected return) and shipped fixes for all money findings: M-1 (concurrent-winner claim reverts) is resolved by **solvency-by-reservation** in `reservedPayouts`; L-1 (gridSize guard) and L-2 (bonanza flag griefing) are fixed. The remaining open item is test coverage (Foundry + Inco cheatcodes); lowering `payoutCapBps` is an optional mainnet-hardening decision.
 
 ---
 
@@ -230,19 +230,24 @@ Two distinct revenue streams, both on chain and both public:
 
 Long-run player return ≈ 98% × 97% + 1% (pot recycled) ≈ **96%**, i.e. a total house take of ≈ **4%** (1% certain + ~3% statistical net of the recycled pot).
 
-**Harvesting:** `skimProfit(bps, to)` takes `bps` of the bankroll **above `bankrollFloor`**. The floor is set to the deploy seed and can **only ever be raised** (`setBankrollFloor`), so seeded principal permanently stays behind player payouts. `maxStake()` simply adjusts down after a skim — solvency holds because every new Dig re-checks its payout against the live bankroll.
+**Harvesting:** `skimProfit(bps, to)` takes `bps` of the bankroll **above BOTH `bankrollFloor` and the reservation backing requirement** (the bankroll the live cap needs to keep `reservedPayouts` fully covered). The floor is set to the deploy seed and can **only ever be raised** (`setBankrollFloor`), so seeded principal permanently stays behind player payouts. `maxStake()` simply adjusts down after a skim — solvency holds because every new Dig re-checks its reservation against the live bankroll.
 
-### 6.6 Solvency machinery
+### 6.6 Solvency machinery (v2.7: solvency by reservation)
 
 ```
-maxPayout() = bankroll × payoutCapBps / 10000      (per-Dig exposure cap)
-maxStake()  = maxPayout() × 100 / 3492             (largest Pick the bankroll covers)
-bet() requires payoutOf(stake, kind) ≤ maxPayout() — otherwise StakeAboveMaximum revert
+maxPayout() = bankroll × payoutCapBps / 10000      (cumulative in-flight exposure cap)
+maxStake()  = maxPayout() × 100 / 3492             (largest Pick with nothing else in flight)
+bet()  requires reservedPayouts + payoutOf(stake, kind) ≤ maxPayout(),
+       then reservedPayouts += payoutOf(stake, kind)
+claim() releases the reservation (reservedPayouts −= payoutOf(b.stake, b.kind))
+        regardless of outcome, before paying
 ```
 
-- `payoutCapBps` defaults to 10000 (100% — legacy/testnet setting); mainnet operators should lower it (e.g. 500 = 5%) so no single win can gut the house. Adjustable both ways (`setPayoutCapBps`).
-- The UI mirrors the exact same check (derives `maxPayout` from the live `maxStake` read) and disables oversized amounts with an explanation instead of letting users burn gas on reverts.
-- Live numbers at report time: bankroll ≈ **0.03641 ETH** → maxStake ≈ **0.001043 ETH** → max Pick payout ≈ 0.03641 ETH.
+- Every accepted Dig keeps its potential payout reserved until claimed, so the invariant `reservedPayouts ≤ bankroll × cap` holds through every state transition — even if every unclaimed Dig wins at the same instant, the bankroll covers them all and **no claim can revert for lack of funds** (this resolves finding M-1).
+- `skimProfit` shields the same reservation requirement, so operator withdrawals can never undercut in-flight liability.
+- `payoutCapBps` defaults to 10000 (100% — testnet setting); mainnet operators should lower it (e.g. 500 = 5%) so in-flight exposure stays a small slice of the house. Adjustable both ways (`setPayoutCapBps`).
+- The UI mirrors the exact same check (derives `maxPayout` from the live `maxStake` read) and disables oversized amounts with an explanation instead of letting users burn gas on reverts; with other Digs in flight the real ceiling is lower and `bet()` reverts with `StakeAboveMaximum`.
+- Live numbers at v2.7 genesis: bankroll = **0.03543 ETH**, reserved = 0 → maxStake ≈ **0.0010146 ETH**.
 
 ### 6.7 Funding, retirement, and invariants
 
@@ -283,7 +288,7 @@ bet() requires payoutOf(stake, kind) ≤ maxPayout() — otherwise StakeAboveMax
 
 ## 8. Smart-contract security audit
 
-**Method:** line-by-line review of `GemHaven.sol` (517 lines) and `ShardToken.sol` (90 lines) at v2.5, plus state-flow, reentrancy, and economic analysis. No automated tooling (hackathon scope); findings below are manual review results.
+**Method:** line-by-line review of `GemHaven.sol` (559 lines) and `ShardToken.sol` (90 lines) at v2.7 (original review at v2.5, re-verified at v2.7), plus state-flow, reentrancy, and economic analysis. No automated tooling (hackathon scope); findings below are manual review results.
 
 ### 8.1 Strengths
 
@@ -302,16 +307,19 @@ bet() requires payoutOf(stake, kind) ≤ maxPayout() — otherwise StakeAboveMax
 
 | ID | Severity | Title | Status |
 | --- | --- | --- | --- |
-| M-1 | **Medium** | Concurrent winners can revert claims under a thin bankroll at 100% exposure cap | documented; mitigation exists |
-| L-1 | **Low** | Missing `gridSize > BONANZA_INDEX` constructor guard | open (no impact on live deploy) |
+| M-1 | **Medium** | Concurrent winners can revert claims under a thin bankroll at 100% exposure cap | **resolved in v2.7** — solvency by reservation (`reservedPayouts`) |
+| L-1 | **Low** | Missing `gridSize > BONANZA_INDEX` constructor guard | **resolved in v2.7** — guard shipped |
+| L-2 | **Low** | `claimBonanza(false)` burned `bonanzaPaid`, letting a griefer orphan a real pot | **resolved in v2.7** — `false` attestations are stateless; only a real hit marks the Dig paid |
 | I-1 | Info | No pause/emergency-stop besides `shutdownTo` | accepted (jam scope) |
 | I-2 | Info | `_playerBets` unbounded array (view gas at scale) | accepted |
 | I-3 | Info | Single-step owner transfer, no timelock/multisig | accepted for testnet |
 | N-1 | Note | Pick range (0..35) cannot be validated without breaking privacy — an out-of-range pick only harms its owner | by design |
 
-**M-1 detail.** `bet()` checks `payout ≤ maxPayout()` at entry, but `claim()` pays from the *live* bankroll. With `payoutCapBps = 10000` and a thin bankroll, two accepted Pick wins can exceed the bankroll jointly: the first claim drains it, the second reverts on underflow until `fundBankroll()` tops it up. The affected player's funds are not lost — the claim simply waits. Mitigations already shipped: `setPayoutCapBps` (lower the cap, e.g. 500) and `fundBankroll`. Recommendation for mainnet: cap ≤ 5–10% and a deeper bankroll; optionally a queue/limit for claims.
+**M-1 detail (resolved).** At v2.5, `bet()` checked `payout ≤ maxPayout()` at entry while `claim()` paid from the *live* bankroll, so two accepted Pick wins could jointly exceed it and the second claim reverted until `fundBankroll()`. v2.7 reserves each Dig's potential payout in `reservedPayouts` at bet time (bounded by `maxPayout()`) and releases it at claim time regardless of outcome; the bankroll can therefore never owe more than it holds and every accepted claim is funded by construction.
 
-**L-1 detail.** The constructor allows `gridSize ≥ 2`. If ever deployed with `gridSize ≤ 7`, `BONANZA_INDEX` (7) is unreachable, the pot accrues forever, and no function can withdraw it. Live deployment uses 36 → no impact. Fix: `require(gridSize_ > BONANZA_INDEX)` in the constructor (would require a redeploy; deferred).
+**L-1 detail (resolved).** The v2.5 constructor allowed `gridSize ≥ 2`; a grid ≤ 7 would have made `BONANZA_INDEX` unreachable, accruing the pot forever with no withdrawal path. v2.7 requires `gridSize > BONANZA_INDEX`.
+
+**L-2 detail (resolved).** The bonanza bit is publicly revealed, so anyone can decrypt it. At v2.5, `claimBonanza(false)` still set `bonanzaPaid = true`, so a griefer could front-run the rightful player with a `false` attestation and orphan the pot. In v2.7 a `false` attestation verifies and returns statelessly; only a genuine hit marks the Dig as paid and releases the pot.
 
 ### 8.3 Attack-surface summary
 
@@ -342,11 +350,11 @@ bet() requires payoutOf(stake, kind) ≤ maxPayout() — otherwise StakeAboveMax
 
 | Layer | State |
 | --- | --- |
-| **Contracts** | v2.5 live on Base Sepolia; both contracts **verified on BaseScan** (source, constructor args, read/write tabs) |
-| **Version lineage** | v1 (round-based) → v2.0 (Megapot route, removed) → v2.1–v2.4 (revenue layer, fundBankroll) → **v2.5 (fee rightsizing)**; all superseded instances retired via `shutdownTo` and listed in the README |
+| **Contracts** | v2.7 live on Base Sepolia; both contracts **verified on BaseScan** (source, constructor args, read/write tabs) |
+| **Version lineage** | v1 (round-based) → v2.0 (Megapot route, removed) → v2.1–v2.4 (revenue layer, fundBankroll) → v2.5 (fee rightsizing) → v2.6 → **v2.7 (game-logic audit: solvency-by-reservation, gridSize guard, bonanza griefing fix)**; superseded instances retired via `shutdownTo` except v2.5, which intentionally stays live for its unclaimed Digs — all listed in the README |
 | **Frontend hosting** | Vercel production, Node 22, NEXT_PUBLIC contract addresses baked per deploy; browser-verified after each deploy (live chain reads, fee hint, zero console errors) |
 | **CI** | GitHub → Vercel auto-deploy on push to `main` (Git integration live) |
-| **Repo hygiene** | No secrets committed (`.env`/`.env.local` gitignored, templates provided); MIT LICENSE present; README accurate as of v2.5 |
+| **Repo hygiene** | No secrets committed (`.env`/`.env.local` gitignored, templates provided); MIT LICENSE present; README accurate as of v2.7 |
 | **Deployer wallet** | Fresh dedicated key, funded minimally; used only via local Foundry scripts |
 
 ---
@@ -354,10 +362,10 @@ bet() requires payoutOf(stake, kind) ≤ maxPayout() — otherwise StakeAboveMax
 ## 11. Known limitations & deliberate simplifications
 
 - **House take is real and stated** (~4% total: 1% protocol fee + ~3% edge net of the recycled pot). The differentiator is untraceable play, not better odds.
-- **Solvency caps small bankrolls** — with 0.036 ETH bankroll, Picks above ~0.001 ETH revert by design. The cap is the feature: the contract can never owe more than it holds.
+- **Solvency caps small bankrolls** — with 0.035 ETH bankroll, Picks above ~0.001 ETH revert by design, and in-flight Digs reserve their payouts (`reservedPayouts`), shrinking room for new ones. The cap is the feature: the contract can never owe more than it holds.
 - **$SHARD has no utility yet** beyond the mining score; the "future allocation" story is roadmap copy, not a promise.
 - **Auto mode is a frontend loop** — re-signs every tx; no session keys.
-- **Unaudited hackathon code** — Base Sepolia is the intended arena; mainnet would additionally need: lower `payoutCapBps`, deeper bankroll, `Ownable2Step`/multisig/timelock, the L-1 constructor guard, and a professional audit.
+- **Unaudited hackathon code** — Base Sepolia is the intended arena; mainnet would additionally need: lower `payoutCapBps`, deeper bankroll, `Ownable2Step`/multisig/timelock, and a professional audit. (The L-1 constructor guard shipped in v2.7.)
 - **No indexer/leaderboard** — all reads come straight from the contract; no global feed of other players' data exists by design.
 - **No automated tests yet** — see open items.
 
@@ -371,8 +379,8 @@ bet() requires payoutOf(stake, kind) ≤ maxPayout() — otherwise StakeAboveMax
 | 2 | **Play a full Dig end-to-end through the UI** with a funded wallet (live proof for reviewers; flips the README "deployment is fresh" note) |
 | 3 | Decide on `payoutCapBps` for the demo narrative (100% is fine for testnet, but the choice should be stated) |
 | 4 | Optional: set a custom Base Sepolia RPC on Vercel (`NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL`) |
-| 5 | Optional: constructor guard `gridSize > BONANZA_INDEX` in a future version |
-| 6 | Mainnet-only backlog: Ownable2Step + multisig, claim queueing under cap pressure, professional audit |
+| 5 | ~~Optional: constructor guard `gridSize > BONANZA_INDEX`~~ — shipped in v2.7 |
+| 6 | Mainnet-only backlog: Ownable2Step + multisig, professional audit (claim queueing is obsolete — v2.7 reservation makes claims funded by construction) |
 
 ---
 
@@ -403,14 +411,14 @@ bet() requires payoutOf(stake, kind) ≤ maxPayout() — otherwise StakeAboveMax
 | `gridSize` / `minStake` (immutable) | 36 / 0.001 ETH | live deployment |
 | `payoutCapBps` | 10000 | live default (adjustable) |
 
-### 14.2 Live deployment (v2.5, 2026-08-10)
+### 14.2 Live deployment (v2.7, 2026-08-11)
 
 | Parameter | Value |
 | --- | --- |
-| GemHaven | `0xEa9fe3914F659902E285968253e17dC67138E0F7` (v2.6) |
-| ShardToken | `0xd04A0cf6332e5F10cDFb0b4BA21c0EE708Ac350B` (v2.6) |
+| GemHaven | `0xe7eb298AfEE79F40f35CEfdCFcccBCBcC2754411` (v2.7) |
+| ShardToken | `0xeA97A1748360412e2E9D3d900D1Fe2a614E1D2a8` (v2.7) |
 | Chain | Base Sepolia, 84532 |
-| Bankroll seed / floor | 0.03543 ETH (bankroll ≈ 0.03641 ETH at report time) |
+| Bankroll seed / floor | 0.03543 ETH (reservedPayouts = 0 at genesis) |
 | Fee reserve seed | 0.0005 ETH |
 | Inco fee budget | 3 × `getFee()` = 0.000003 ETH per Dig |
 | Demo URL | https://frontend-xxcode.vercel.app |
@@ -422,4 +430,4 @@ bet() requires payoutOf(stake, kind) ≤ maxPayout() — otherwise StakeAboveMax
 
 ---
 
-*Report generated 2026-08-10 from a full review of the v2.5 codebase (`contracts/src`, `contracts/script`, `frontend/lib`, `frontend/components`), live chain reads against the Base Sepolia deployment, and the Inco games documentation. MIT License.*
+*Report updated 2026-08-11 for v2.7 (game-logic audit re-run: uniform-edge hedge-proofing verified on-chain, M-1/L-1/L-2 fixed and deployed). Original report generated 2026-08-10 from a full review of the v2.5 codebase (`contracts/src`, `contracts/script`, `frontend/lib`, `frontend/components`), live chain reads against the Base Sepolia deployment, and the Inco games documentation. MIT License.*
