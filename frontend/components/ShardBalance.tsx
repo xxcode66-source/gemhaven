@@ -48,6 +48,14 @@ export function ShardBalance() {
   const { isConnected } = useAccount();
   const { balance, symbol } = useShardBalance();
 
+  // NEXT_PUBLIC_* is inlined into the CLIENT bundle at build time but is not
+  // reliably present in the server runtime env on Vercel, so the SSR pass can
+  // see `shardIsConfigured = false` while the client sees true. Gate the
+  // configured branch on mount so the first client render matches the server
+  // markup — otherwise React keeps the stale fallback text forever.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const balanceDisplay = useCountUpShard(balance ?? 0n);
 
   return (
@@ -73,7 +81,7 @@ export function ShardBalance() {
           </span>
         </header>
 
-        {!shardIsConfigured ? (
+        {!shardIsConfigured || !mounted ? (
           <p className="text-sm text-slate-500">
             Set <code className="font-mono text-xs text-slate-400">NEXT_PUBLIC_SHARD_ADDRESS</code> to track balances.
           </p>
