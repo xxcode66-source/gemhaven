@@ -6,7 +6,6 @@ import { useAccount } from "wagmi";
 import { shardIsConfigured } from "@/lib/contracts";
 import { formatShard } from "@/lib/format";
 import { useShardBalance } from "@/lib/hooks";
-import { countCachedWins } from "@/lib/verdicts";
 
 /**
  * Rolls the big $SHARD number up to its new value whenever a claim mints —
@@ -47,15 +46,8 @@ function useCountUpShard(target: bigint | undefined): string {
 
 export function ShardBalance() {
   const { isConnected } = useAccount();
-  const { balance, totalSupply, symbol, totalMined } = useShardBalance();
+  const { balance, symbol } = useShardBalance();
 
-  // Wins can no longer be derived from totalMined (rates differ per kind), so
-  // the tally comes from this browser's own decrypted verdicts. Re-read when
-  // the balance moves so a fresh claim or win lands without a page reload.
-  const [wins, setWins] = useState<number | null>(null);
-  useEffect(() => {
-    setWins(countCachedWins());
-  }, [balance]);
   const balanceDisplay = useCountUpShard(balance ?? 0n);
 
   return (
@@ -93,24 +85,6 @@ export function ShardBalance() {
                 ${symbol} in your wallet — minted the moment you claim a winning Dig, never bought
               </p>
             </div>
-            <dl className="grid grid-cols-2 gap-3 text-xs">
-              <div>
-                <dt className="engraved">Mining score</dt>
-                <dd className="mt-1 font-mono text-sm text-gem-teal">{formatShard(totalMined ?? 0n)}</dd>
-              </div>
-              <div>
-                <dt className="engraved">Winning Digs</dt>
-                <dd className="mt-1 font-mono text-sm text-slate-300">{wins === null ? "—" : wins.toString()}</dd>
-              </div>
-              <div>
-                <dt className="engraved">Per win</dt>
-                <dd className="mt-1 font-mono text-sm text-slate-300">Pick 10 · parity 2 · All 1</dd>
-              </div>
-              <div>
-                <dt className="engraved">Total minted</dt>
-                <dd className="mt-1 font-mono text-sm text-slate-300">{formatShard(totalSupply)}</dd>
-              </div>
-            </dl>
             {!isConnected && (
               <p className="text-xs text-slate-500">Connect a wallet to track your own sack.</p>
             )}

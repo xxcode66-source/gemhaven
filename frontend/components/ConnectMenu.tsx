@@ -60,7 +60,10 @@ export function ConnectMenu() {
             {shortenAddress(address)}
           </>
         ) : (
-          "Connect wallet"
+          <>
+            <span className="sm:hidden">Connect</span>
+            <span className="hidden sm:inline">Connect wallet</span>
+          </>
         )}
         <span aria-hidden className="text-[9px] text-slate-400">
           ▼

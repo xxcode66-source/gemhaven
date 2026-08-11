@@ -151,7 +151,34 @@ export function MotherlodeWheel({
         </h2>
       </header>
 
-      <div className="relative mx-auto aspect-square w-full max-w-[560px]">
+      <div className="relative mx-auto w-full max-w-[560px]">
+        {/* Ambient cavern light breathing behind the wheel. */}
+        <div
+          aria-hidden
+          className="absolute -inset-10 rounded-full bg-[radial-gradient(circle,rgba(62,230,196,0.1),rgba(167,139,250,0.06)_45%,transparent_72%)] blur-2xl"
+        />
+
+        {/* Everything on the disc lives inside this clipped square — the
+            rotated slot/tick wrappers' bounding boxes reach √2× past the
+            circle and would force horizontal scroll on phones otherwise. */}
+        <div className="relative aspect-square overflow-hidden">
+        {/* Static gauge: fine ticks the drifting rim glides past. */}
+        <div aria-hidden className="absolute inset-0">
+          {Array.from({ length: 72 }, (_, i) => (
+            <div key={i} className="absolute inset-0" style={{ transform: `rotate(${i * 5}deg)` }}>
+              <span
+                className={`absolute left-1/2 top-[0.4%] w-px -translate-x-1/2 ${
+                  i % 6 === 0 ? "h-[1.8%] bg-white/25" : "h-[1%] bg-white/10"
+                }`}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Decorative rails the slots ride on. */}
+        <div aria-hidden className="absolute inset-[4.5%] rounded-full border border-white/[0.05]" />
+        <div aria-hidden className="absolute inset-[13%] rounded-full border border-white/[0.07]" />
+
         {/* The pointer — where a winning Pick comes to rest. Breathes softly while idle. */}
         <div aria-hidden className="absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-[38%]">
           <span
@@ -277,6 +304,11 @@ export function MotherlodeWheel({
 
         {/* The hub — the only place that states the verdict out loud. */}
         <div className="absolute inset-0 z-10 m-auto flex h-[36%] w-[36%] flex-col items-center justify-center gap-1 rounded-full border border-white/10 bg-rock-deep/85 text-center shadow-facet backdrop-blur-sm">
+          {/* A slow orbit ring keeps the hub alive between Digs. */}
+          <span
+            aria-hidden
+            className="absolute inset-2 animate-[spin_26s_linear_infinite] rounded-full border border-dashed border-white/[0.09]"
+          />
           {digging ? (
             <>
               <span aria-hidden className="animate-spin-slow font-display text-xl text-gem-violet">
@@ -305,6 +337,13 @@ export function MotherlodeWheel({
             )
           ) : (
             <>
+              <span
+                aria-hidden
+                className="animate-pulseGlow font-display text-base text-gem-violet"
+                style={{ ["--glow-color" as string]: "rgba(167,139,250,0.45)" }}
+              >
+                ✦
+              </span>
               <p className="engraved">Motherlode</p>
               <p className="font-display text-sm tracking-wide text-slate-200">
                 {kind === BetKind.Pick ? "Pick a slot" : kind === BetKind.All ? "Whole wheel" : "Parity"}
@@ -312,6 +351,7 @@ export function MotherlodeWheel({
               <p className="px-3 text-[0.65rem] leading-snug text-slate-500">the draw is encrypted — no one sees it but you</p>
             </>
           )}
+        </div>
         </div>
       </div>
     </section>
