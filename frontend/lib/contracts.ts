@@ -29,8 +29,12 @@ export const CHAIN_LABELS: Record<SupportedChainId, string> = {
 function readAddress(raw: string | undefined): Address | undefined {
   if (!raw) return undefined;
   const trimmed = raw.trim();
-  if (!isAddress(trimmed)) return undefined;
-  return getAddress(trimmed);
+  if (isAddress(trimmed)) return getAddress(trimmed);
+  // Tolerate a miscased EIP-55 string: forge's console log does not emit
+  // checksummed addresses, and viem rejects invalid mixed case outright.
+  const lowered = trimmed.toLowerCase();
+  if (isAddress(lowered)) return getAddress(lowered);
+  return undefined;
 }
 
 /**
