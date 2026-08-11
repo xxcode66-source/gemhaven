@@ -50,6 +50,10 @@ const SPARKS = Array.from({ length: 10 }, (_, i) => {
 
 /** One full spin of the fast loop, in seconds. */
 const SPIN_DURATION_S = 0.9;
+/** One full turn of the idle ambient drift, in seconds — slow enough to feel
+ * alive, never distracting. Runs as plain CSS so it can't be dropped by the
+ * animation engine. */
+export const IDLE_DRIFT_S = 70;
 /** Where the rim parks when the result must not point at any number. */
 const VEILED_OFFSET_DEG = 137;
 
@@ -87,17 +91,35 @@ export function MotherlodeWheel({
   const picking = kind === BetKind.Pick && !disabled;
   const step = 360 / gridSize;
 
-  // The spin is theatre: the verdict already exists, encrypted. While a Dig
-  // is in flight the rim loops fast; when it settles, a Pick strike parks the
-  // chosen deposit under the pointer (win = draw equals pick, which the
-  // player already knows). Anything else veils behind frosted glass instead
-  // of pointing at a number the chain never revealed.
+  // When idle, the rim drifts on a plain CSS loop (`wheel-drift`). While a Dig
+  // is in flight, the inner framer div takes over with the fast spin; when it
+  // settles, a Pick strike parks the chosen deposit under the pointer (win =
+  // draw equals pick, which the player already knows) and the drift pauses.
+  // Anything else veils behind frosted glass instead of pointing at a number
+  // the chain never revealed.
   const digStartRef = useRef<number | null>(null);
   useEffect(() => {
     if (digging) digStartRef.current = performance.now();
   }, [digging]);
 
   const [restAngle, setRestAngle] = useState(0);
+
+  // The drift rotates the outer ring on its own clock, so the settle must
+  // compensate for wherever the ring happens to be when the verdict lands.
+  const ringRef = useRef<HTMLDivElement>(null);
+  const ringRotation = () => {
+    const ring = ringRef.current;
+    if (!ring) return 0;
+    const transform = getComputedStyle(ring).transform;
+    if (!transform || transform === "none") return 0;
+    const match = transform.match(/matrix\(([^)]+)\)/);
+    if (!match || match[1] === undefined) return 0;
+    const parts = match[1].split(",").map((value) => Number(value.trim()));
+    const a = parts[0] ?? 1;
+    const b = parts[1] ?? 0;
+    const deg = (Math.atan2(b, a) * 180) / Math.PI;
+    return (deg + 360) % 360;
+  };
 
   const settle = useMemo(() => {
     if (digging || !outcome) return null;
@@ -107,7 +129,10 @@ export function MotherlodeWheel({
       outcome.pick !== null && outcome.won
         ? (360 - outcome.pick * step) % 360
         : VEILED_OFFSET_DEG;
-    return { from, to: from + 1080 + align, veiled: !(outcome.pick !== null && outcome.won) };
+    const target = ((from + 1080 + align - ringRotation()) % 360 + 360) % 360;
+    return { from, to: from + 1080 + (target - ((from + 1080) % 360)), veiled: !(outcome.pick !== null && outcome.won) };
+    // ringRotation reads live style on purpose — the drift clock never stops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [digging, outcome, step]);
 
   useEffect(() => {
@@ -127,19 +152,26 @@ export function MotherlodeWheel({
       </header>
 
       <div className="relative mx-auto aspect-square w-full max-w-[560px]">
-        {/* The pointer — where a winning Pick comes to rest. */}
+        {/* The pointer — where a winning Pick comes to rest. Breathes softly while idle. */}
         <div aria-hidden className="absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-[38%]">
           <span
-            className="block h-0 w-0 border-x-[11px] border-t-[18px] border-x-transparent"
+            className="block h-0 w-0 animate-pulseGlow border-x-[11px] border-t-[18px] border-x-transparent"
             style={{
               borderTopColor: "#fbbf6a",
               filter: "drop-shadow(0 0 10px rgba(251,191,106,0.55))",
+              ["--glow-color" as string]: "rgba(251,191,106,0.35)",
             }}
           />
         </div>
 
-        {/* The rim. Remounts per phase so each animation starts clean. */}
-        <div className={["wheel-ring absolute inset-0", !digging && settle?.veiled ? "wheel-veil" : ""].join(" ")}>
+        {/* The rim. The outer ring carries the slow idle drift (paused while
+            a Dig spins or a verdict is parked); the inner div remounts per
+            phase so each animation starts clean. */}
+        <div
+          ref={ringRef}
+          className={["wheel-ring wheel-drift absolute inset-0", (digging || settle) && !reduceMotion ? "wheel-drift-paused" : "", !digging && settle?.veiled ? "wheel-veil" : ""].join(" ")}
+          style={{ ["--drift-duration" as string]: `${IDLE_DRIFT_S}s` }}
+        >
           <motion.div
             key={digging ? "spin" : settle ? `settle-${outcome?.id.toString()}` : "idle"}
             initial={reduceMotion ? false : digging ? { rotate: restAngle } : settle ? { rotate: settle.from } : false}

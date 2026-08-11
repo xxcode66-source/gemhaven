@@ -100,6 +100,17 @@
     filter: blur(5px) saturate(0.72);
     opacity: 0.45;
   }
+
+  /* The idle drift: the whole rim turns slowly on its own so the wheel reads
+     as alive even between Digs. Paused while a Dig spins or a verdict parks.
+     Reduced-motion users get the static wheel via the media query below. */
+  .wheel-drift {
+    animation: wheel-drift var(--drift-duration, 70s) linear infinite;
+  }
+
+  .wheel-drift-paused {
+    animation-play-state: paused;
+  }
 }
 
 @keyframes tile-sway {
@@ -109,6 +120,15 @@
   }
   50% {
     transform: rotateY(3.5deg) rotateX(-1.8deg);
+  }
+}
+
+@keyframes wheel-drift {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 

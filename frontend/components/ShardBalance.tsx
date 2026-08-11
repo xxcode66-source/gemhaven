@@ -56,7 +56,7 @@ export function ShardBalance() {
   useEffect(() => {
     setWins(countCachedWins());
   }, [balance]);
-  const balanceDisplay = useCountUpShard(balance);
+  const balanceDisplay = useCountUpShard(balance ?? 0n);
 
   return (
     <section aria-labelledby="shard-heading" className="rock-panel p-5">
@@ -85,8 +85,6 @@ export function ShardBalance() {
           <p className="text-sm text-slate-500">
             Set <code className="font-mono text-xs text-slate-400">NEXT_PUBLIC_SHARD_ADDRESS</code> to track balances.
           </p>
-        ) : !isConnected ? (
-          <p className="text-sm text-slate-500">Connect a wallet to see your ${symbol}.</p>
         ) : (
           <>
             <div>
@@ -98,7 +96,7 @@ export function ShardBalance() {
             <dl className="grid grid-cols-2 gap-3 text-xs">
               <div>
                 <dt className="engraved">Mining score</dt>
-                <dd className="mt-1 font-mono text-sm text-gem-teal">{formatShard(totalMined)}</dd>
+                <dd className="mt-1 font-mono text-sm text-gem-teal">{formatShard(totalMined ?? 0n)}</dd>
               </div>
               <div>
                 <dt className="engraved">Winning Digs</dt>
@@ -113,6 +111,9 @@ export function ShardBalance() {
                 <dd className="mt-1 font-mono text-sm text-slate-300">{formatShard(totalSupply)}</dd>
               </div>
             </dl>
+            {!isConnected && (
+              <p className="text-xs text-slate-500">Connect a wallet to track your own sack.</p>
+            )}
           </>
         )}
       </div>
