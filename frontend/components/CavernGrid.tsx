@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useMemo } from "react";
 
 import { BetKind, BONANZA_INDEX, type BetKindValue } from "@/lib/contracts";
+import { playPick } from "@/lib/sfx";
 
 /**
  * Four mineral families cycle across the wall and carry the colour of each
@@ -43,11 +44,20 @@ function depositName(index: number): string {
   return DEPOSIT_NAMES[index] ?? `Deposit ${index + 1}`;
 }
 
+/** Spark offsets for the strike burst — a loose ring around the deposit. */
+const SPARKS = Array.from({ length: 10 }, (_, i) => {
+  const angle = (i / 10) * Math.PI * 2 + (i % 2 === 0 ? 0.16 : -0.12);
+  const radius = 42 + (i % 3) * 14;
+  return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+});
+
 /** The player's own most recent verdict, surfaced only on their own tile. */
 export type DigOutcome = {
   /** The deposit the player picked (Pick bets only — never shown for others). */
   pick: number;
   won: boolean;
+  /** The Dig's id — keys the burst animation so repeat strikes replay it. */
+  id: bigint;
 };
 
 export function CavernGrid({
@@ -121,7 +131,10 @@ export function CavernGrid({
                   isStrike ? (strikeWon ? " — your last strike" : " — your last miss") : ""
                 }`}
                 disabled={!picking}
-                onClick={() => onSelect(isSelected ? null : index)}
+                onClick={() => {
+                  playPick();
+                  onSelect(isSelected ? null : index);
+                }}
                 className="group relative block w-full disabled:cursor-default"
                 style={{ ["--glow-color" as string]: gem.glow }}
               >
@@ -205,6 +218,22 @@ export function CavernGrid({
                     ].join(" ")}
                   >
                     {strikeWon ? "★ Your strike" : "Missed — sealed"}
+                  </span>
+                )}
+
+                {/* A strike scatters gem sparks from the cracked deposit. */}
+                {isStrike && strikeWon && !reduceMotion && outcome && (
+                  <span key={outcome.id.toString()} aria-hidden className="pointer-events-none absolute inset-0 z-20">
+                    {SPARKS.map((spark, i) => (
+                      <motion.span
+                        key={i}
+                        initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+                        animate={{ x: spark.x, y: spark.y, opacity: 0, scale: 0.3 }}
+                        transition={{ duration: 0.85, ease: "easeOut", delay: i * 0.02 }}
+                        className="absolute left-1/2 top-1/2 h-1.5 w-1.5 rounded-full"
+                        style={{ background: gem.hex, boxShadow: `0 0 8px 1px ${gem.glow}` }}
+                      />
+                    ))}
                   </span>
                 )}
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { decodeEventLog, parseEther } from "viem";
 import { useAccount, usePublicClient, useWalletClient, useWriteContract } from "wagmi";
@@ -20,6 +21,7 @@ import { describeError, formatEth, formatShard } from "@/lib/format";
 import { coverageOf, shardRewardFor } from "@/lib/contracts";
 import { useActiveChainId, useCavernConfig, useGameStats, useIncoFeeBudget } from "@/lib/hooks";
 import { decryptOwnResult, encryptDeposit } from "@/lib/inco";
+import { isMuted, playDig, playLose, playPick, playWin, setMuted } from "@/lib/sfx";
 import { storeVerdict } from "@/lib/verdicts";
 import type { DigOutcome } from "./CavernGrid";
 
@@ -63,6 +65,7 @@ export function BetControls({
   const publicClient = usePublicClient({ chainId });
   const { data: walletClient } = useWalletClient({ chainId });
   const { writeContractAsync } = useWriteContract();
+  const reduceMotion = useReducedMotion();
 
   const { config } = useCavernConfig();
   const { stats, refetch: refetchStats } = useGameStats();
@@ -73,6 +76,12 @@ export function BetControls({
   const [stage, setStage] = useState<DigStage>("idle");
   const [error, setError] = useState("");
   const [result, setResult] = useState<LastResult | null>(null);
+  // Synced from localStorage after mount, so SSR and client first paint agree.
+  const [soundOff, setSoundOff] = useState(false);
+
+  useEffect(() => {
+    setSoundOff(isMuted());
+  }, []);
 
   const autoRef = useRef(false);
 
@@ -194,7 +203,10 @@ export function BetControls({
     const won = attested.value;
     storeVerdict(betId, won);
 
-    onOutcome(kind === BetKind.Pick && pick !== null ? { pick, won } : null);
+    onOutcome(kind === BetKind.Pick && pick !== null ? { pick, won, id: betId } : null);
+
+    if (won) playWin();
+    else playLose();
 
     const payoutWei = won ? previewPayout(stake, kind, gridSize) : 0n;
 
@@ -210,6 +222,7 @@ export function BetControls({
   async function dig() {
     setError("");
     setResult(null);
+    playDig();
     try {
       await runOne();
     } catch (cause) {
@@ -235,6 +248,7 @@ export function BetControls({
     // The loop re-validates everything each iteration and stops on any error.
     while (autoRef.current) {
       setError("");
+      playDig();
       try {
         const ok = await runOne();
         if (!ok) break;
@@ -272,7 +286,10 @@ export function BetControls({
                 role="radio"
                 aria-checked={active}
                 disabled={busy || auto}
-                onClick={() => onKindChange(option.kind)}
+                onClick={() => {
+                  playPick();
+                  onKindChange(option.kind);
+                }}
                 className={[
                   "rounded-xl border px-3 py-2 text-left transition",
                   active
@@ -303,7 +320,10 @@ export function BetControls({
                 key={preset}
                 type="button"
                 disabled={busy || auto}
-                onClick={() => setAmountInput(preset)}
+                onClick={() => {
+                  playPick();
+                  setAmountInput(preset);
+                }}
                 aria-pressed={amountInput === preset}
                 className={[
                   "rounded-lg border px-3 py-1.5 font-mono text-xs tabular-nums transition",
@@ -363,6 +383,19 @@ export function BetControls({
               />
               Auto
             </label>
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-400">
+              <input
+                type="checkbox"
+                checked={!soundOff}
+                onChange={(event) => {
+                  setMuted(!event.target.checked);
+                  setSoundOff(!event.target.checked);
+                  if (event.target.checked) playPick();
+                }}
+                className="h-4 w-4 accent-teal-400"
+              />
+              Sound
+            </label>
             <button type="button" onClick={dig} disabled={!canDig || auto} className="gem-button">
               {stage === "sealing" && "Sealing your pick…"}
               {stage === "signing" && "Confirm in wallet…"}
@@ -377,15 +410,39 @@ export function BetControls({
         <p aria-live="polite" className="text-xs text-slate-500">
           {!isConnected && "Connect a wallet to Dig."}
           {isConnected && belowMin && "That amount is below the minimum Dig."}
-          {isConnected && !busy && result !== null && (
-            <span className={result.won ? "text-amber-200" : "text-slate-400"}>
-              Dig #{result.betId.toString()}: {" "}
-              {result.won
-                ? `struck — claim ${formatEth(result.payout)} ETH + ${formatShard(shardRewardFor(kind))} $SHARD from your Recent Digs below.`
-                : "missed. Your pick stays sealed — no one can see what it was."}
-            </span>
-          )}
         </p>
+
+        {/* The verdict lands with a flourish — strike in gold, miss in dust. */}
+        <AnimatePresence mode="wait">
+          {isConnected && !busy && result !== null && (
+            <motion.div
+              key={result.betId.toString()}
+              role="status"
+              initial={reduceMotion ? undefined : { opacity: 0, scale: 0.92, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+              transition={{ type: "spring", stiffness: 300, damping: 22 }}
+              className={[
+                "rounded-xl border px-4 py-3",
+                result.won
+                  ? "border-amber-300/40 bg-amber-300/[0.07] shadow-[0_0_38px_-12px_rgba(251,191,106,0.55)]"
+                  : "border-white/10 bg-white/[0.02]",
+              ].join(" ")}
+            >
+              <p
+                className={`font-display text-xl tracking-wide ${result.won ? "text-amber-200" : "text-slate-300"}`}
+              >
+                {result.won ? "★ Strike!" : "The wall holds — missed."}
+              </p>
+              <p className="mt-0.5 text-xs text-slate-400">
+                Dig #{result.betId.toString()}: {" "}
+                {result.won
+                  ? `${formatEth(result.payout)} ETH + ${formatShard(shardRewardFor(kind))} $SHARD — claim it in your Recent Digs below.`
+                  : "your pick stays sealed — no one can see what it was."}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {error && (
           <p role="alert" className="rounded-lg border border-rose-400/30 bg-rose-400/[0.07] px-3 py-2 text-sm text-rose-200">

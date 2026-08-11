@@ -8,6 +8,7 @@ import { BET_KIND_LABELS, gemHavenContract, isConfigured, previewPayout, shardRe
 import { describeError, formatEth, formatShard } from "@/lib/format";
 import { useActiveChainId, useCavernConfig, usePlayerBets, type PlayerBet } from "@/lib/hooks";
 import { decryptOwnResult, isLiveHandle, revealPublicBit } from "@/lib/inco";
+import { playBonanza, playClaim } from "@/lib/sfx";
 import { readVerdict, storeVerdict } from "@/lib/verdicts";
 
 /** The player's own decrypted verdict, plus the attestation `claim` will verify. */
@@ -122,6 +123,9 @@ function BetRow({ bet, onChanged }: { bet: PlayerBet; onChanged: () => void }) {
 
   useEffect(() => {
     if (!receipt.isSuccess) return;
+    // A payout landing is a moment worth hearing.
+    if (bonanza === "claiming") playBonanza();
+    else if (busy === "claim") playClaim();
     setBusy(null);
     if (bonanza === "claiming") setBonanza("unknown");
     setHash(undefined);

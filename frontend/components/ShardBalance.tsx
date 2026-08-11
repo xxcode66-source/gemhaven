@@ -1,12 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAccount } from "wagmi";
 
 import { shardIsConfigured } from "@/lib/contracts";
 import { formatShard } from "@/lib/format";
 import { useShardBalance } from "@/lib/hooks";
 import { countCachedWins } from "@/lib/verdicts";
+
+/**
+ * Rolls the big $SHARD number up to its new value whenever a claim mints —
+ * earnings should feel like they land. Honours prefers-reduced-motion.
+ */
+function useCountUpShard(target: bigint | undefined): string {
+  const [display, setDisplay] = useState(target);
+  const previous = useRef(target);
+
+  useEffect(() => {
+    if (target === undefined) return;
+    const from = previous.current ?? 0n;
+    previous.current = target;
+    if (from === target) {
+      setDisplay(target);
+      return;
+    }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setDisplay(target);
+      return;
+    }
+    const start = performance.now();
+    const duration = 900;
+    let raf = 0;
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const scaled = BigInt(Math.round(eased * 1000));
+      setDisplay(from + ((target - from) * scaled) / 1000n);
+      if (t < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target]);
+
+  return formatShard(display);
+}
 
 export function ShardBalance() {
   const { isConnected } = useAccount();
@@ -15,6 +52,7 @@ export function ShardBalance() {
   // Wins can no longer be derived from totalMined (rates differ per kind), so
   // the tally comes from this browser's own decrypted verdicts.
   const [wins] = useState(() => countCachedWins());
+  const balanceDisplay = useCountUpShard(balance);
 
   return (
     <section aria-labelledby="shard-heading" className="rock-panel p-5">
@@ -48,7 +86,7 @@ export function ShardBalance() {
         ) : (
           <>
             <div>
-              <p className="font-mono text-4xl tabular-nums text-slate-100">{formatShard(balance)}</p>
+              <p className="font-mono text-4xl tabular-nums text-slate-100">{balanceDisplay}</p>
               <p className="mt-1 text-xs text-slate-500">total ${symbol} earned — mined only, never bought</p>
             </div>
             <dl className="grid grid-cols-2 gap-3 text-xs">
