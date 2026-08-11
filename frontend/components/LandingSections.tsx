@@ -24,7 +24,7 @@ const STEPS = [
   },
   {
     title: "Claim what is yours",
-    copy: "Only your wallet can decrypt the outcome. Winning ETH and $SHARD are paid out the moment you claim.",
+    copy: "Only your wallet can decrypt the outcome. Claiming returns your full stake plus freshly minted $SHARD — and even a miss mines a consolation cut.",
   },
 ];
 
@@ -59,7 +59,7 @@ export function LandingSections() {
           <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-gem-teal" />
         </header>
         <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Stat label="House bankroll">
+          <Stat label="House liquidity">
             <AnimatedEth wei={stats?.bankroll} /> <Unit>ETH</Unit>
           </Stat>
           <Stat label="Bonanza pot" accent>

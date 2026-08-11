@@ -4,19 +4,35 @@ pragma solidity ^0.8.29;
 import {euint256, ebool, e, inco} from "@inco/lightning/src/Lib.sol";
 import {IShardMintable} from "./interfaces/IShardMintable.sol";
 
-/// @title GemHaven — a confidential instant dig-to-earn game on Base
+/// @title GemHaven — a confidential instant dig-to-farm game on Base
 /// @notice Players **Dig** on a wall of `gridSize` crystal **Deposits**. Every Dig
-///         is resolved instantly against the house: the contract draws an encrypted
-///         **Motherlode** index in the same transaction, compares it with the
-///         player's encrypted pick (or its parity, or nothing at all for `All`),
-///         and seals a single encrypted win/loss bit for the player to decrypt.
-///         Fixed multipliers per bet kind; play is continuous — there are no rounds.
+///         is resolved instantly: the contract draws an encrypted **Motherlode**
+///         index in the same transaction, compares it with the player's encrypted
+///         pick (or its parity, or nothing at all for `All`), and seals a single
+///         encrypted win/loss bit for the player to decrypt. Play is continuous —
+///         there are no rounds.
 ///
-/// @dev **Bet kinds.** `Pick` wins when the Motherlode equals the picked deposit
-///      (pays `STRAIGHT_MULT`). `Even`/`Odd` win on the Motherlode's parity (pays
-///      `EVEN_ODD_MULT`). `All` stakes the amount on every deposit at once: the
-///      stake is `amount * gridSize`, exactly one tile wins, and the payout is
-///      `amount * STRAIGHT_MULT` — a guaranteed ~0.97x grind.
+/// @dev **Bet kinds.** `Pick` wins when the Motherlode equals the picked deposit.
+///      `Even`/`Odd` win on the Motherlode's parity. `All` covers every deposit at
+///      once (stake = amount * gridSize) and therefore always wins.
+///
+/// @dev **Money flow (v2.8 — the house never risks its own capital).** The full
+///      stake is held as per-Dig escrow until the Dig is claimed:
+///        - WIN: the escrowed stake is refunded to the player ("duit balik") and
+///          $SHARD is minted at the kind's multiplier (`SHARD = stake x mult x
+///          SHARD_SCALE`). Riskier coverage mints more: Pick 34.92x, parity 1.94x.
+///          `All` always wins, so it mints zero $SHARD — a riskless kind must not
+///          be a farm, it exists as a practice/demo dig.
+///        - LOSS: the stake is split 50% to {bonanzaPot}, 49% to {bankroll}
+///          (house liquidity, withdrawable for buyback/liquidity), 1% to
+///          {protocolFees}; the player also mints a small consolation of $SHARD
+///          (0.5x stake-scale) so every Dig farms something.
+///      The house's maximum ETH outflow on any Dig is the stake refund it already
+///      holds in escrow, so there is no bankroll solvency machinery at all: no
+///      exposure cap, no reservation ledger, no floor. $SHARD is the product —
+///      a mining score (`totalMined`) that a future token allocation can weight.
+///      The Bonanza pot is released to the player of any Dig whose draw hit
+///      {BONANZA_INDEX} — a rolling jackpot funded purely by losing Digs.
 ///
 /// @dev **The privacy guarantee, precisely.** What the chain ever learns per Dig:
 ///      the stake, the bet kind, and one public 1-bit — whether the draw hit
@@ -25,19 +41,6 @@ import {IShardMintable} from "./interfaces/IShardMintable.sol";
 ///      to the player alone; there is no admin path to it. If you extend this
 ///      contract, do not add a path that reveals the pick — it would break the
 ///      entire premise.
-///
-/// @dev **Money flow.** Each stake is split three ways inside the stake: 1% to
-///      {bonanzaPot}, 1% protocol fee to {protocolFees}, and the rest to
-///      {bankroll}. Wins pay from the bankroll at the fixed multiplier; every
-///      Dig reserves its potential payout in {reservedPayouts} until claimed,
-///      and the cumulative reservation is bounded by the exposure cap
-///      {payoutCapBps}, so the house stays solvent even if every unclaimed Dig
-///      wins at once. House-edge profit accrues in the bankroll and is
-///      harvestable above {bankrollFloor} via {skimProfit}; protocol fees are
-///      certain revenue, withdrawable via {withdrawFees}.
-///      The Bonanza pot is released to the player of any Dig whose draw hit
-///      {BONANZA_INDEX} — a zinc-style rolling pot funded purely by the per-Dig
-///      cut.
 ///
 /// @dev **Inco access-control note (verified against inco/lightning v1.0.2).**
 ///      Results of encrypted operations are granted only *transient* (same-tx)
@@ -54,7 +57,7 @@ import {IShardMintable} from "./interfaces/IShardMintable.sol";
 ///      to fund that, so staked ETH is never spent on compute. Surplus
 ///      accumulates and is withdrawable via {withdrawSurplus}, which can never
 ///      touch player-owed ETH. A superseded deployment can be fully drained
-///      through {shutdownTo} so the bankroll is not stranded on redeploy.
+///      through {shutdownTo} so house funds are not stranded on redeploy.
 contract GemHaven {
     using e for *;
 
@@ -95,26 +98,31 @@ contract GemHaven {
 
     // ------------------------------------------------------------ constants --
 
-    /// @notice `$SHARD` minted per winning claim, by kind. Riskier coverage mints
-    ///         more: a straight Pick mints the most, while the always-winning
-    ///         `All` grind mints the least so auto-betting earns only traces.
-    uint256 public constant REWARD_PER_WIN = 10e18;
-    uint256 public constant REWARD_PER_PARITY_WIN = 2e18;
-    uint256 public constant REWARD_PER_ALL_WIN = 1e18;
-
-    /// @notice Multipliers, expressed as multiplier x 100 (3492 = 34.92x).
-    /// @dev ~3% house edge against fair odds of 36x and 2x on a 36-deposit wall.
+    /// @notice $SHARD multipliers on a winning claim, expressed as multiplier
+    ///         x 100 (3492 = 34.92x of stake-scale). Riskier coverage mints more.
     uint16 public constant STRAIGHT_MULT_BPS = 3_492;
     uint16 public constant EVEN_ODD_MULT_BPS = 194;
     uint16 public constant MULT_DENOMINATOR = 100;
 
-    /// @notice Top-line cut per Dig, in basis points of the stake.
-    uint16 public constant BONANZA_BPS = 100; // 1%
+    /// @notice Wei of $SHARD per wei of stake at a 1.00x multiplier. 1000 makes
+    ///         numbers read well: a 0.001 ETH Pick win mints 34.92 $SHARD.
+    uint256 public constant SHARD_SCALE = 1_000;
+
+    /// @notice Consolation $SHARD on a losing claim, in bps of stake-scale
+    ///         (5000 = 0.5x): a 0.001 ETH loss mints 0.5 $SHARD. Every Dig farms
+    ///         something, but losing still costs real ETH, so $SHARD cannot be
+    ///         printed for free.
+    uint16 public constant CONSOLATION_BPS = 5_000;
+
+    /// @notice Basis-points denominator for the loss split and consolation.
     uint16 public constant BPS_DENOMINATOR = 10_000;
 
-    /// @notice Protocol fee per Dig, in basis points of the stake. Certain
-    ///         revenue — unlike the statistical house edge it accrues on every
-    ///         Dig regardless of outcome — collected into {protocolFees}.
+    /// @notice Share of a LOSING stake that feeds the Bonanza pot, in bps.
+    ///         Half of every miss rolls into the jackpot.
+    uint16 public constant BONANZA_LOSS_BPS = 5_000; // 50%
+
+    /// @notice Protocol fee taken from a LOSING stake, in bps. Certain house
+    ///         revenue, collected into {protocolFees}.
     uint16 public constant PROTOCOL_FEE_BPS = 100; // 1%
 
     /// @notice The "golden deposit". A draw hitting this index releases the
@@ -145,33 +153,23 @@ contract GemHaven {
 
     address public owner;
 
-    /// @notice ETH available to pay wins. Seeded at deploy, fed by losing stakes.
-    uint256 public bankroll;
-    /// @notice Rolling Bonanza pot, funded by 1% of every stake.
+    /// @notice Stakes of Digs not yet claimed, held for the win refund. The
+    ///         house's maximum outflow on any Dig is exactly what it holds here
+    ///         for that Dig — solvency by construction, no bankroll needed.
+    uint256 public escrow;
+
+    /// @notice Rolling Bonanza pot, fed by 50% of every losing stake.
     uint256 public bonanzaPot;
-    /// @notice Accrued protocol fees, withdrawable via {withdrawFees}.
+
+    /// @notice House liquidity: 49% of every losing stake. Owed to nobody —
+    ///         withdrawable via {withdrawBankroll} for buyback/liquidity.
+    uint256 public bankroll;
+
+    /// @notice Accrued protocol fees (1% of losing stakes), withdrawable via
+    ///         {withdrawFees}.
     uint256 public protocolFees;
 
-    /// @notice The seeded bankroll that {skimProfit} can never dip below.
-    ///         Raising it locks more ETH behind player payouts permanently.
-    uint256 public bankrollFloor;
-
-    /// @notice Per-Dig exposure cap: the largest TOTAL payout exposure the
-    ///         contract may carry at once, in bps of the bankroll. Every Dig
-    ///         reserves its potential payout in {reservedPayouts} until it is
-    ///         claimed (win or lose), so even if every unclaimed Dig wins at
-    ///         the same instant the bankroll covers them all — claims never
-    ///         revert for lack of funds. Defaults to 100% (fine for a seeded
-    ///         testnet); mainnet operators may lower it (e.g. 500 = 5%) so
-    ///         in-flight exposure stays a small slice of the house.
-    uint16 public payoutCapBps;
-
-    /// @notice Sum of potential payouts of all unclaimed Digs. Reserved at bet
-    ///         time, released at claim time regardless of outcome, so the cap
-    ///         is enforced on cumulative exposure — not per Dig in isolation.
-    uint256 public reservedPayouts;
-
-    /// @notice Lifetime $SHARD minted to each player from winning Pick claims.
+    /// @notice Lifetime $SHARD minted to each player (wins + consolation).
     ///         A non-transferable mining score: it only grows by playing, so a
     ///         future token allocation can weight real play, not bought balances.
     mapping(address => uint256) public totalMined;
@@ -188,12 +186,9 @@ contract GemHaven {
     event Claimed(uint256 indexed betId, address indexed player, bool won, uint256 payout, uint256 shardMinted);
     event BonanzaClaimed(uint256 indexed betId, address indexed player, uint256 amount);
     event FeeReserveFunded(address indexed from, uint256 amount);
-    event BankrollFunded(address indexed from, uint256 amount);
+    event BankrollWithdrawn(address indexed to, uint256 amount);
     event SurplusWithdrawn(address indexed to, uint256 amount);
     event FeesWithdrawn(address indexed to, uint256 amount);
-    event ProfitSkimmed(address indexed to, uint256 amount);
-    event BankrollFloorRaised(uint256 newFloor);
-    event PayoutCapUpdated(uint16 newCapBps);
     event Shutdown(address indexed to, uint256 amount);
     event OwnerUpdated(address indexed owner);
 
@@ -203,16 +198,12 @@ contract GemHaven {
     error ZeroAddress();
     error InvalidGridSize();
     error StakeBelowMinimum();
-    error StakeAboveMaximum();
     error UnknownBet();
     error NotYourBet();
     error AlreadyClaimed();
     error BonanzaAlreadyPaid();
     error BadAttestation();
     error NothingToWithdraw();
-    error NothingToFund();
-    error InvalidBps();
-    error FloorCanOnlyRise();
     error TransferFailed();
 
     modifier onlyOwner() {
@@ -222,11 +213,10 @@ contract GemHaven {
 
     // ---------------------------------------------------------- constructor --
 
-    /// @dev Send the starting bankroll as the constructor's `msg.value`.
-    constructor(address shard_, uint8 gridSize_, uint256 minStake_) payable {
+    constructor(address shard_, uint8 gridSize_, uint256 minStake_) {
         require(shard_ != address(0), ZeroAddress());
         // `> BONANZA_INDEX` (not `>= 2`): a grid too small to contain the
-        // golden deposit would still take the 1% pot cut on every Dig but
+        // golden deposit would still take the pot cut on every loss but
         // could never trigger a Bonanza, locking the pot forever.
         require(gridSize_ > BONANZA_INDEX && gridSize_ <= MAX_GRID_SIZE, InvalidGridSize());
         require(minStake_ != 0, StakeBelowMinimum());
@@ -235,9 +225,6 @@ contract GemHaven {
         gridSize = gridSize_;
         minStake = minStake_;
         owner = msg.sender;
-        bankroll = msg.value;
-        bankrollFloor = msg.value;
-        payoutCapBps = uint16(BPS_DENOMINATOR);
     }
 
     // ------------------------------------------------------------- the game --
@@ -250,28 +237,15 @@ contract GemHaven {
     ///        ciphertext is still required; for `All` it is compared to itself.
     /// @param kind The bet kind.
     /// @dev Send `stake + incoFeeBudget(kind)` as `msg.value`. For `All` the stake
-    ///      is the per-tile amount times `gridSize`.
+    ///      is the per-tile amount times `gridSize`. The whole stake stays in
+    ///      escrow until claimed: a win refunds it, a loss splits it.
     /// @return betId Id of the new Dig.
     function bet(bytes calldata encryptedPick, BetKind kind) external payable returns (uint256 betId) {
         uint256 budget = incoFeeBudget(kind);
         require(msg.value > budget, StakeBelowMinimum());
         uint256 stake = msg.value - budget;
         require(stake >= minStake * coverageOf(kind), StakeBelowMinimum());
-        // Solvency by reservation: every Dig locks its potential payout until
-        // it is claimed, so the cap applies to ALL in-flight Digs at once.
-        // Two max-size parity Digs can no longer both win against one bankroll.
-        uint256 potential = payoutOf(stake, kind);
-        require(reservedPayouts + potential <= maxPayout(), StakeAboveMaximum());
-        reservedPayouts += potential;
-
-        // Top-line cuts, both taken inside the stake: 1% accrues to the
-        // Bonanza pot, 1% is the protocol fee, the rest feeds the bankroll
-        // that pays wins.
-        uint256 bonanzaCut = (stake * BONANZA_BPS) / BPS_DENOMINATOR;
-        uint256 protocolCut = (stake * PROTOCOL_FEE_BPS) / BPS_DENOMINATOR;
-        bonanzaPot += bonanzaCut;
-        protocolFees += protocolCut;
-        bankroll += stake - bonanzaCut - protocolCut;
+        escrow += stake;
 
         // Inco grants the *player* persistent decrypt rights over their own pick
         // and this contract only transient rights, so allowThis() is required to
@@ -322,8 +296,11 @@ contract GemHaven {
     }
 
     /// @notice Claims a resolved Dig. `won` must be the player's own decrypted
-    ///         win bit, attested by the Inco covalidators; a losing Dig simply
-    ///         marks itself claimed and pays nothing.
+    ///         win bit, attested by the Inco covalidators.
+    /// @dev Win: the escrowed stake is refunded and $SHARD mints at the kind's
+    ///      multiplier (`All` mints zero — a riskless kind must not farm).
+    ///      Loss: the stake splits 50% pot / 49% house / 1% fee and the player
+    ///      mints consolation $SHARD.
     function claim(uint256 betId, bool won, bytes[] calldata signatures) external {
         Bet storage b = _betAt(betId);
         require(msg.sender == b.player, NotYourBet());
@@ -331,18 +308,20 @@ contract GemHaven {
         require(e.verifyDecryption(b.encWon, won, signatures), BadAttestation());
 
         b.claimed = true;
-        // Release this Dig's reservation whatever the outcome — losing claims
-        // free capacity just like winning ones.
-        uint256 payout = payoutOf(b.stake, b.kind);
-        reservedPayouts -= payout;
-        if (!won) {
-            emit Claimed(betId, msg.sender, false, 0, 0);
-            return;
+        escrow -= b.stake;
+
+        uint256 shardMinted;
+        if (won) {
+            shardMinted = shardWinOf(b.stake, b.kind);
+        } else {
+            uint256 potCut = (b.stake * uint256(BONANZA_LOSS_BPS)) / uint256(BPS_DENOMINATOR);
+            uint256 feeCut = (b.stake * uint256(PROTOCOL_FEE_BPS)) / uint256(BPS_DENOMINATOR);
+            bonanzaPot += potCut;
+            protocolFees += feeCut;
+            bankroll += b.stake - potCut - feeCut;
+            shardMinted = shardLossOf(b.stake);
         }
 
-        bankroll -= payout;
-
-        uint256 shardMinted = shardReward(b.kind);
         if (shardMinted != 0) {
             shard.mint(msg.sender, shardMinted);
             // Lifetime mining score. Deliberately the cumulative minted amount,
@@ -350,12 +329,12 @@ contract GemHaven {
             totalMined[msg.sender] += shardMinted;
         }
 
-        if (payout != 0) {
-            (bool ok,) = msg.sender.call{value: payout}("");
+        if (won) {
+            (bool ok,) = msg.sender.call{value: b.stake}("");
             require(ok, TransferFailed());
         }
 
-        emit Claimed(betId, msg.sender, true, payout, shardMinted);
+        emit Claimed(betId, msg.sender, won, won ? b.stake : 0, shardMinted);
     }
 
     /// @notice Releases the whole Bonanza pot to the player of a Dig whose draw
@@ -393,43 +372,24 @@ contract GemHaven {
         return uint256(gridSize) / 2;
     }
 
-    /// @notice `$SHARD` minted for a winning claim of `kind`.
-    function shardReward(BetKind kind) public pure returns (uint256) {
-        if (kind == BetKind.Pick) return REWARD_PER_WIN;
-        if (kind == BetKind.All) return REWARD_PER_ALL_WIN;
-        return REWARD_PER_PARITY_WIN;
-    }
-
-    /// @notice Payout for a winning Dig of `kind` with `stake` (total stake for
-    ///         `All`, i.e. per-tile amount times `gridSize`).
-    function payoutOf(uint256 stake, BetKind kind) public view returns (uint256) {
-        if (kind == BetKind.All) {
-            return (stake * STRAIGHT_MULT_BPS) / (MULT_DENOMINATOR * uint256(gridSize));
-        }
+    /// @notice $SHARD minted for a winning claim: stake x multiplier x
+    ///         {SHARD_SCALE}. `All` always wins, so it mints zero — otherwise a
+    ///         riskless kind would print $SHARD for free.
+    function shardWinOf(uint256 stake, BetKind kind) public pure returns (uint256) {
+        if (kind == BetKind.All) return 0;
         uint256 mult = kind == BetKind.Pick ? uint256(STRAIGHT_MULT_BPS) : uint256(EVEN_ODD_MULT_BPS);
-        return (stake * mult) / MULT_DENOMINATOR;
+        return (stake * mult * SHARD_SCALE) / uint256(MULT_DENOMINATOR);
     }
 
-    /// @notice Largest total payout exposure the contract may currently carry —
-    ///         the bankroll scaled by {payoutCapBps}. At the 100% default the
-    ///         in-flight reservations of ALL unclaimed Digs may equal the whole
-    ///         bankroll, and every claim is funded by construction.
-    function maxPayout() public view returns (uint256) {
-        return (bankroll * uint256(payoutCapBps)) / BPS_DENOMINATOR;
-    }
-
-    /// @notice Largest `Pick` stake the bankroll can currently cover IF no
-    ///         other Dig is in flight; in-flight reservations shrink the room
-    ///         left for new Digs (`bet` re-checks and reverts with
-    ///         StakeAboveMaximum when full). The UI caps presets at this.
-    ///         (`All` may stake `gridSize` times this total.)
-    function maxStake() public view returns (uint256) {
-        return (maxPayout() * MULT_DENOMINATOR) / uint256(STRAIGHT_MULT_BPS);
+    /// @notice Consolation $SHARD minted on a losing claim:
+    ///         stake-scale x {CONSOLATION_BPS}.
+    function shardLossOf(uint256 stake) public pure returns (uint256) {
+        return ((stake * SHARD_SCALE) * uint256(CONSOLATION_BPS)) / uint256(BPS_DENOMINATOR);
     }
 
     /// @notice ETH to add on top of the stake in {bet} to cover Inco compute
     ///         fees. Two fee-bearing ops per Dig plus one unit of headroom.
-    function incoFeeBudget(BetKind) public view returns (uint256) {
+    function incoFeeBudget(BetKind) public pure returns (uint256) {
         return inco.getFee() * INCO_FEE_UNITS;
     }
 
@@ -451,26 +411,28 @@ contract GemHaven {
         return _playerBets[player];
     }
 
-    /// @notice ETH in this contract not owed to players or the pot — the
-    ///         accumulated Inco fee buffer, minus the floor kept for in-flight Digs.
+    /// @notice ETH in this contract not owed to players, the pot, fees or the
+    ///         house ledger — the accumulated Inco fee buffer, minus the floor
+    ///         kept for in-flight Digs.
     function surplusETH() public view returns (uint256) {
-        uint256 owed = bankroll + bonanzaPot + protocolFees + inco.getFee() * INCO_FEE_FLOOR_UNITS;
+        uint256 owed = escrow + bonanzaPot + protocolFees + bankroll + inco.getFee() * INCO_FEE_FLOOR_UNITS;
         uint256 balance = address(this).balance;
         return balance > owed ? balance - owed : 0;
     }
 
     // ---------------------------------------------------------------- admin --
 
-    /// @notice Tops up the bankroll with fresh house capital mid-flight.
-    ///         Unlike a plain transfer — which {receive} credits to the Inco
-    ///         fee reserve — this counts toward payouts and raises {maxStake}
-    ///         immediately. It is NOT automatically locked: call
-    ///         {setBankrollFloor} afterwards if it should be shielded from
-    ///         {skimProfit}.
-    function fundBankroll() external payable {
-        require(msg.value != 0, NothingToFund());
-        bankroll += msg.value;
-        emit BankrollFunded(msg.sender, msg.value);
+    /// @notice Withdraws the entire house liquidity ledger ({bankroll}) —
+    ///         losing stakes accumulated for buyback/liquidity. Owed to nobody,
+    ///         so the full amount is safe to take at any time.
+    function withdrawBankroll(address to) external onlyOwner {
+        require(to != address(0), ZeroAddress());
+        uint256 amount = bankroll;
+        require(amount != 0, NothingToWithdraw());
+        bankroll = 0;
+        (bool ok,) = to.call{value: amount}("");
+        require(ok, TransferFailed());
+        emit BankrollWithdrawn(to, amount);
     }
 
     /// @notice Tops up the Inco fee reserve. Not counted as player-owed ETH.
@@ -478,8 +440,8 @@ contract GemHaven {
         emit FeeReserveFunded(msg.sender, msg.value);
     }
 
-    /// @notice Withdraws only {surplusETH}. Cannot touch the bankroll or the
-    ///         Bonanza pot.
+    /// @notice Withdraws only {surplusETH} — the fee buffer excess. Cannot touch
+    ///         escrow, the Bonanza pot, fees or the house ledger.
     function withdrawSurplus(address to) external onlyOwner {
         require(to != address(0), ZeroAddress());
         uint256 amount = surplusETH();
@@ -490,8 +452,8 @@ contract GemHaven {
     }
 
     /// @notice Withdraws the accrued protocol fees. Certain house revenue:
-    ///         unlike the edge it never touches the bankroll, the Bonanza pot,
-    ///         or player-owed ETH.
+    ///         unlike the loss split it accrues on every losing Dig and never
+    ///         touches escrow, the Bonanza pot, or player-owed ETH.
     function withdrawFees(address to) external onlyOwner {
         require(to != address(0), ZeroAddress());
         uint256 amount = protocolFees;
@@ -502,51 +464,12 @@ contract GemHaven {
         emit FeesWithdrawn(to, amount);
     }
 
-    /// @notice Harvests house-edge profit: `bps` of the bankroll growth above
-    ///         BOTH {bankrollFloor} and {reservedPayouts}. The seeded floor is
-    ///         never touched and in-flight Dig exposure is never undercut, and
-    ///         {maxStake} simply adjusts down afterwards — solvency holds by
-    ///         construction because every bet re-checks its reservation against
-    ///         the live bankroll.
-    function skimProfit(uint16 bps, address to) external onlyOwner {
-        require(to != address(0), ZeroAddress());
-        require(bps != 0 && bps <= BPS_DENOMINATOR, InvalidBps());
-        // Shield both the seeded floor and whatever bankroll the live cap
-        // needs to back the in-flight reservations (reserved <= cap x bankroll).
-        uint256 needForCap =
-            (reservedPayouts * BPS_DENOMINATOR + uint256(payoutCapBps) - 1) / uint256(payoutCapBps);
-        uint256 shielded = bankrollFloor > needForCap ? bankrollFloor : needForCap;
-        uint256 excess = bankroll > shielded ? bankroll - shielded : 0;
-        uint256 amount = (excess * uint256(bps)) / BPS_DENOMINATOR;
-        require(amount != 0, NothingToWithdraw());
-        bankroll -= amount;
-        (bool ok,) = to.call{value: amount}("");
-        require(ok, TransferFailed());
-        emit ProfitSkimmed(to, amount);
-    }
-
-    /// @notice Raises the protected bankroll floor. Deliberately one-way: the
-    ///         floor can only ever grow, locking more ETH behind payouts.
-    function setBankrollFloor(uint256 floor_) external onlyOwner {
-        require(floor_ > bankrollFloor, FloorCanOnlyRise());
-        bankrollFloor = floor_;
-        emit BankrollFloorRaised(floor_);
-    }
-
-    /// @notice Sets the per-Dig exposure cap (bps of the bankroll). Lowering it
-    ///         trades max-bet size for variance safety; raising it back is
-    ///         allowed so a misconfiguration is recoverable.
-    function setPayoutCapBps(uint16 bps) external onlyOwner {
-        require(bps != 0 && bps <= BPS_DENOMINATOR, InvalidBps());
-        payoutCapBps = bps;
-        emit PayoutCapUpdated(bps);
-    }
-
-    /// @notice Retires this instance and sends its ENTIRE balance — bankroll,
-    ///         Bonanza pot and fee reserve — to `to`. Deliberately bypasses the
-    ///         solvency protections, which exist to shield live players: they
-    ///         would otherwise strand house funds forever on a superseded
-    ///         deployment. Has no sensible use on a live instance with players.
+    /// @notice Retires this instance and sends its ENTIRE balance — escrow,
+    ///         pot, fees, house ledger and fee reserve — to `to`. Deliberately
+    ///         bypasses the accounting ledgers, which exist to shield live
+    ///         players: they would otherwise strand house funds forever on a
+    ///         superseded deployment. Has no sensible use on a live instance
+    ///         with unclaimed Digs.
     function shutdownTo(address to) external onlyOwner {
         require(to != address(0), ZeroAddress());
         uint256 amount = address(this).balance;

@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import type { Hex } from "viem";
 import { useAccount, useWaitForTransactionReceipt, useWalletClient, useWriteContract } from "wagmi";
 
-import { BET_KIND_LABELS, gemHavenContract, isConfigured, previewPayout, shardRewardFor } from "@/lib/contracts";
+import { BET_KIND_LABELS, gemHavenContract, previewShardLoss, previewShardWin } from "@/lib/contracts";
 import { describeError, formatEth, formatShard } from "@/lib/format";
-import { useActiveChainId, useCavernConfig, usePlayerBets, type PlayerBet } from "@/lib/hooks";
+import { useActiveChainId, usePlayerBets, type PlayerBet } from "@/lib/hooks";
 import { decryptOwnResult, isLiveHandle, revealPublicBit } from "@/lib/inco";
 import { playBonanza, playClaim } from "@/lib/sfx";
 import { readVerdict, storeVerdict } from "@/lib/verdicts";
@@ -106,7 +106,6 @@ function BetRow({ bet, onChanged }: { bet: PlayerBet; onChanged: () => void }) {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient({ chainId });
   const { writeContractAsync } = useWriteContract();
-  const { config } = useCavernConfig();
 
   const [verdict, setVerdict] = useState<Verdict | null>(() => {
     // Verdicts decrypted in a previous session are cached locally — the chain
@@ -134,8 +133,8 @@ function BetRow({ bet, onChanged }: { bet: PlayerBet; onChanged: () => void }) {
   }, [receipt.isSuccess, onChanged]);
 
   const own = address !== undefined && bet.player.toLowerCase() === address.toLowerCase();
-  const gridSize = config?.gridSize ?? 36;
-  const payout = previewPayout(bet.stake, bet.kind, gridSize);
+  // A win refunds the full stake; the reward is minted $SHARD on top.
+  const payout = bet.stake;
   const kindLabel = BET_KIND_LABELS[bet.kind] ?? "Dig";
 
   async function decrypt() {
@@ -199,11 +198,11 @@ function BetRow({ bet, onChanged }: { bet: PlayerBet; onChanged: () => void }) {
   }
 
   const status = (() => {
-    if (bet.claimed && verdict?.won) return { text: `Struck — claimed ${formatEth(payout)} ETH`, tone: "text-gem-teal", mark: "★" };
-    if (bet.claimed && verdict && !verdict.won) return { text: "Missed — settled", tone: "text-slate-400", mark: "·" };
+    if (bet.claimed && verdict?.won) return { text: `Struck — claimed ${formatEth(payout)} ETH + ${formatShard(previewShardWin(bet.stake, bet.kind))} SHARD`, tone: "text-gem-teal", mark: "★" };
+    if (bet.claimed && verdict && !verdict.won) return { text: `Missed — claimed ${formatShard(previewShardLoss(bet.stake))} SHARD consolation`, tone: "text-slate-400", mark: "·" };
     if (bet.claimed) return { text: "Settled — reveal to see the result", tone: "text-slate-400", mark: "✓" };
     if (verdict?.won) return { text: "Won — ready to claim", tone: "text-amber-200", mark: "★" };
-    if (verdict && !verdict.won) return { text: "Missed", tone: "text-slate-400", mark: "·" };
+    if (verdict && !verdict.won) return { text: "Missed — consolation SHARD ready", tone: "text-slate-400", mark: "·" };
     return { text: "Sealed — decrypt to find out", tone: "text-gem-violet", mark: "◆" };
   })();
 
@@ -250,7 +249,7 @@ function BetRow({ bet, onChanged }: { bet: PlayerBet; onChanged: () => void }) {
             >
               {busy === "claim"
                 ? "Claiming…"
-                : `Claim ${formatEth(payout)} ETH + ${formatShard(shardRewardFor(bet.kind))} SHARD`}
+                : `Claim ${formatEth(payout)} ETH + ${formatShard(previewShardWin(bet.stake, bet.kind))} SHARD`}
             </button>
           )}
 
@@ -261,7 +260,7 @@ function BetRow({ bet, onChanged }: { bet: PlayerBet; onChanged: () => void }) {
               disabled={busy !== null}
               className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-slate-400 transition hover:border-white/25"
             >
-              {busy === "claim" ? "Sealing…" : "Mark settled"}
+              {busy === "claim" ? "Claiming…" : `Claim ${formatShard(previewShardLoss(bet.stake))} SHARD consolation`}
             </button>
           )}
 
@@ -280,8 +279,9 @@ function BetRow({ bet, onChanged }: { bet: PlayerBet; onChanged: () => void }) {
 
       {verdict && !verdict.won && !bet.claimed && (
         <p className="mt-3 text-xs text-slate-500">
-          This Dig missed. Your pick stays encrypted on chain — nothing about it was published. Marking it settled is
-          optional; it only tidies this list.
+          This Dig missed. Half of its stake fed the Bonanza pot, 1% went to protocol fees, and the rest hardened the
+          house liquidity. You still mine a consolation ${formatShard(previewShardLoss(bet.stake))} SHARD — claim it
+          above. Your pick stays encrypted on chain; nothing about it was published.
         </p>
       )}
 

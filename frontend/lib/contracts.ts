@@ -111,18 +111,32 @@ export const MULT_DENOMINATOR = 100n;
 /** `GemHaven.BONANZA_INDEX` — the golden deposit that releases the Bonanza pot. */
 export const BONANZA_INDEX = 7;
 
-/** `GemHaven.REWARD_PER_WIN` — fixed 10 SHARD per winning Pick claim. */
-export const REWARD_PER_WIN = 10n * 10n ** 18n;
+/** `GemHaven.SHARD_SCALE` — wei of $SHARD per wei of stake at a 1.00x multiplier. */
+export const SHARD_SCALE = 1_000n;
 
-/** Mirrors of `GemHaven.REWARD_PER_PARITY_WIN` / `REWARD_PER_ALL_WIN`. */
-export const REWARD_PER_PARITY_WIN = 2n * 10n ** 18n;
-export const REWARD_PER_ALL_WIN = 1n * 10n ** 18n;
+/** `GemHaven.CONSOLATION_BPS` — consolation $SHARD on a loss, in bps of stake-scale. */
+export const CONSOLATION_BPS = 5_000n;
 
-/** `$SHARD` minted for a winning claim of `kind` — mirrors `shardReward(kind)`. */
-export function shardRewardFor(kind: number): bigint {
-  if (kind === BetKind.Pick) return REWARD_PER_WIN;
-  if (kind === BetKind.All) return REWARD_PER_ALL_WIN;
-  return REWARD_PER_PARITY_WIN;
+export const BPS_DENOMINATOR = 10_000n;
+
+/**
+ * Mirrors the contract's loss split — used only for copy; the split itself
+ * happens on chain and is never trusted to these constants. Half of every
+ * missed stake feeds the Bonanza pot, 1% is the protocol fee, the rest is
+ * house liquidity.
+ */
+export const BONANZA_LOSS_BPS = 5_000n;
+
+/** Local mirror of `GemHaven.shardWinOf` — $SHARD a winning claim mints. */
+export function previewShardWin(stake: bigint, kind: number): bigint {
+  if (kind === BetKind.All) return 0n;
+  const mult = kind === BetKind.Pick ? STRAIGHT_MULT_BPS : EVEN_ODD_MULT_BPS;
+  return (stake * mult * SHARD_SCALE) / MULT_DENOMINATOR;
+}
+
+/** Local mirror of `GemHaven.shardLossOf` — consolation $SHARD a loss mints. */
+export function previewShardLoss(stake: bigint): bigint {
+  return (stake * SHARD_SCALE * CONSOLATION_BPS) / BPS_DENOMINATOR;
 }
 
 /** Deposits covered per kind: Pick 1, parity half the wall, All the whole wall. */
@@ -132,19 +146,4 @@ export function coverageOf(kind: number, gridSize: number): number {
   return gridSize / 2;
 }
 
-export const BPS_DENOMINATOR = 10_000n;
 
-/**
- * Mirrors the contract's per-Dig Bonanza cut. Used only for copy — the split
- * itself happens on chain and is never trusted to these constants.
- */
-export const BONANZA_BPS = 100n;
-
-/** Local mirror of `GemHaven.payoutOf` for payout previews before sending. */
-export function previewPayout(stake: bigint, kind: number, gridSize: number): bigint {
-  if (kind === BetKind.All) {
-    return (stake * STRAIGHT_MULT_BPS) / (MULT_DENOMINATOR * BigInt(gridSize));
-  }
-  const mult = kind === BetKind.Pick ? STRAIGHT_MULT_BPS : EVEN_ODD_MULT_BPS;
-  return (stake * mult) / MULT_DENOMINATOR;
-}

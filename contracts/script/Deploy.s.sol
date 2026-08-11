@@ -19,16 +19,15 @@ contract Deploy is Script {
 
         uint8 gridSize = uint8(vm.envOr("GRID_SIZE", uint256(36)));
         uint256 minStake = vm.envOr("MIN_STAKE_WEI", uint256(0.001 ether));
-        uint256 bankrollSeed = vm.envOr("BANKROLL_SEED_WEI", uint256(0.05 ether));
         uint256 feeReserve = vm.envOr("INCO_FEE_RESERVE_WEI", uint256(0.001 ether));
 
         vm.startBroadcast(pk);
 
         ShardToken shard = new ShardToken();
 
-        // `bankrollSeed` is the starting bankroll that pays winning Digs; it is
-        // the constructor's `msg.value` and is accounted separately from fees.
-        GemHaven gemHaven = new GemHaven{value: bankrollSeed}(address(shard), gridSize, minStake);
+        // v2.8 holds no house capital: wins only refund each Dig's own escrowed
+        // stake, so there is no bankroll seed to send.
+        GemHaven gemHaven = new GemHaven(address(shard), gridSize, minStake);
 
         // `feeReserve` prefunds the Inco compute-fee buffer so the very first
         // Dig can draw its Motherlode before any fee top-ups accrue. Plain
@@ -45,7 +44,6 @@ contract Deploy is Script {
         console2.log("GemHaven              ", address(gemHaven));
         console2.log("gridSize              ", gridSize);
         console2.log("minStake (wei)        ", minStake);
-        console2.log("bankroll seed (wei)   ", bankrollSeed);
         console2.log("incoFeeBudget (wei)   ", gemHaven.incoFeeBudget(GemHaven.BetKind.Pick));
         console2.log("");
         console2.log("Set these in frontend/.env.local:");

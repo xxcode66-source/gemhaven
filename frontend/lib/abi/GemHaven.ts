@@ -19,7 +19,7 @@ export const gemHavenAbi = [
         "type": "uint256"
       }
     ],
-    "stateMutability": "payable",
+    "stateMutability": "nonpayable",
     "type": "constructor"
   },
   {
@@ -44,16 +44,6 @@ export const gemHavenAbi = [
   },
   {
     "inputs": [],
-    "name": "FloorCanOnlyRise",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "InvalidBps",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "InvalidGridSize",
     "type": "error"
   },
@@ -69,17 +59,7 @@ export const gemHavenAbi = [
   },
   {
     "inputs": [],
-    "name": "NothingToFund",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "NothingToWithdraw",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "StakeAboveMaximum",
     "type": "error"
   },
   {
@@ -106,22 +86,9 @@ export const gemHavenAbi = [
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "newFloor",
-        "type": "uint256"
-      }
-    ],
-    "name": "BankrollFloorRaised",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
         "indexed": true,
         "internalType": "address",
-        "name": "from",
+        "name": "to",
         "type": "address"
       },
       {
@@ -131,7 +98,7 @@ export const gemHavenAbi = [
         "type": "uint256"
       }
     ],
-    "name": "BankrollFunded",
+    "name": "BankrollWithdrawn",
     "type": "event"
   },
   {
@@ -282,38 +249,6 @@ export const gemHavenAbi = [
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
-        "internalType": "uint16",
-        "name": "newCapBps",
-        "type": "uint16"
-      }
-    ],
-    "name": "PayoutCapUpdated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "to",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "ProfitSkimmed",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
         "indexed": true,
         "internalType": "address",
         "name": "to",
@@ -350,19 +285,6 @@ export const gemHavenAbi = [
   },
   {
     "inputs": [],
-    "name": "BONANZA_BPS",
-    "outputs": [
-      {
-        "internalType": "uint16",
-        "name": "",
-        "type": "uint16"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "BONANZA_INDEX",
     "outputs": [
       {
@@ -376,7 +298,33 @@ export const gemHavenAbi = [
   },
   {
     "inputs": [],
+    "name": "BONANZA_LOSS_BPS",
+    "outputs": [
+      {
+        "internalType": "uint16",
+        "name": "",
+        "type": "uint16"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "BPS_DENOMINATOR",
+    "outputs": [
+      {
+        "internalType": "uint16",
+        "name": "",
+        "type": "uint16"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "CONSOLATION_BPS",
     "outputs": [
       {
         "internalType": "uint16",
@@ -467,33 +415,7 @@ export const gemHavenAbi = [
   },
   {
     "inputs": [],
-    "name": "REWARD_PER_ALL_WIN",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "REWARD_PER_PARITY_WIN",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "REWARD_PER_WIN",
+    "name": "SHARD_SCALE",
     "outputs": [
       {
         "internalType": "uint256",
@@ -520,19 +442,6 @@ export const gemHavenAbi = [
   {
     "inputs": [],
     "name": "bankroll",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "bankrollFloor",
     "outputs": [
       {
         "internalType": "uint256",
@@ -647,9 +556,15 @@ export const gemHavenAbi = [
   },
   {
     "inputs": [],
-    "name": "fundBankroll",
-    "outputs": [],
-    "stateMutability": "payable",
+    "name": "escrow",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -756,33 +671,7 @@ export const gemHavenAbi = [
         "type": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "maxPayout",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "maxStake",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -826,43 +715,6 @@ export const gemHavenAbi = [
   },
   {
     "inputs": [],
-    "name": "payoutCapBps",
-    "outputs": [
-      {
-        "internalType": "uint16",
-        "name": "",
-        "type": "uint16"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "stake",
-        "type": "uint256"
-      },
-      {
-        "internalType": "enum GemHaven.BetKind",
-        "name": "kind",
-        "type": "uint8"
-      }
-    ],
-    "name": "payoutOf",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "protocolFees",
     "outputs": [
       {
@@ -877,38 +729,12 @@ export const gemHavenAbi = [
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "floor_",
-        "type": "uint256"
-      }
-    ],
-    "name": "setBankrollFloor",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "address",
         "name": "owner_",
         "type": "address"
       }
     ],
     "name": "setOwner",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint16",
-        "name": "bps",
-        "type": "uint16"
-      }
-    ],
-    "name": "setPayoutCapBps",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -929,12 +755,36 @@ export const gemHavenAbi = [
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "stake",
+        "type": "uint256"
+      }
+    ],
+    "name": "shardLossOf",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "stake",
+        "type": "uint256"
+      },
+      {
         "internalType": "enum GemHaven.BetKind",
         "name": "kind",
         "type": "uint8"
       }
     ],
-    "name": "shardReward",
+    "name": "shardWinOf",
     "outputs": [
       {
         "internalType": "uint256",
@@ -954,24 +804,6 @@ export const gemHavenAbi = [
       }
     ],
     "name": "shutdownTo",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint16",
-        "name": "bps",
-        "type": "uint16"
-      },
-      {
-        "internalType": "address",
-        "name": "to",
-        "type": "address"
-      }
-    ],
-    "name": "skimProfit",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1006,6 +838,19 @@ export const gemHavenAbi = [
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      }
+    ],
+    "name": "withdrawBankroll",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

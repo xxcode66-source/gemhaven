@@ -11,31 +11,30 @@ import {
   gemHavenAbi,
   gemHavenContract,
   isConfigured,
-  MULT_DENOMINATOR,
-  previewPayout,
+  previewShardLoss,
+  previewShardWin,
   requireGemHavenAddress,
-  STRAIGHT_MULT_BPS,
   type BetKindValue,
 } from "@/lib/contracts";
 import { describeError, formatEth, formatShard } from "@/lib/format";
-import { coverageOf, shardRewardFor } from "@/lib/contracts";
-import { useActiveChainId, useCavernConfig, useGameStats, useIncoFeeBudget } from "@/lib/hooks";
+import { coverageOf } from "@/lib/contracts";
+import { useActiveChainId, useCavernConfig, useIncoFeeBudget } from "@/lib/hooks";
 import { decryptOwnResult, encryptDeposit } from "@/lib/inco";
 import { isMuted, playDig, playLose, playPick, playWin, setMuted } from "@/lib/sfx";
 import { storeVerdict } from "@/lib/verdicts";
 import type { DigOutcome } from "./MotherlodeWheel";
 
-/** Amount presets in ETH, zinc-style. Anything above `maxStake` is capped live. */
+/** Amount presets in ETH, zinc-style. */
 const PRESETS = ["0.001", "0.005", "0.01", "0.05", "0.1", "1"] as const;
 
 /** Pause between consecutive Digs in auto mode. */
 const AUTO_DELAY_MS = 1_500;
 
 const KIND_OPTIONS: { kind: BetKindValue; mult: string; hint: string }[] = [
-  { kind: BetKind.Pick, mult: "34.92x", hint: "1 of 36" },
-  { kind: BetKind.Even, mult: "1.94x", hint: "18 of 36" },
-  { kind: BetKind.Odd, mult: "1.94x", hint: "18 of 36" },
-  { kind: BetKind.All, mult: "0.97x", hint: "whole wall" },
+  { kind: BetKind.Pick, mult: "34.92x SHARD", hint: "1 of 36" },
+  { kind: BetKind.Even, mult: "1.94x SHARD", hint: "18 of 36" },
+  { kind: BetKind.Odd, mult: "1.94x SHARD", hint: "18 of 36" },
+  { kind: BetKind.All, mult: "stake back", hint: "whole wall" },
 ];
 
 type DigStage = "idle" | "sealing" | "signing" | "resolving" | "decrypting";
@@ -68,7 +67,6 @@ export function BetControls({
   const reduceMotion = useReducedMotion();
 
   const { config } = useCavernConfig();
-  const { stats, refetch: refetchStats } = useGameStats();
   const feeBudget = useIncoFeeBudget(kind);
 
   const [amountInput, setAmountInput] = useState<string>(PRESETS[0] ?? "0.001");
@@ -107,15 +105,10 @@ export function BetControls({
   const coverage = coverageOf(kind, gridSize);
   const totalStake = amountWei !== undefined ? amountWei * BigInt(coverage) : undefined;
   const minTotal = minStake !== undefined ? minStake * BigInt(coverage) : undefined;
-  const payout = totalStake !== undefined ? previewPayout(totalStake, kind, gridSize) : undefined;
+  const shardWin = totalStake !== undefined ? previewShardWin(totalStake, kind) : undefined;
   const totalCost = totalStake !== undefined && feeBudget !== undefined ? totalStake + feeBudget : undefined;
 
   const belowMin = totalStake !== undefined && minTotal !== undefined && totalStake < minTotal;
-  // Solvency cap: wins pay `maxPayout() = bankroll × payoutCapBps`, which the
-  // UI derives from `maxStake` (the largest Pick the bankroll covers). Mirrors
-  // the contract check exactly, so it stays correct for any exposure cap.
-  const maxPayout = stats !== undefined ? (stats.maxStake * STRAIGHT_MULT_BPS) / MULT_DENOMINATOR : undefined;
-  const aboveMax = payout !== undefined && maxPayout !== undefined && payout > maxPayout;
 
   const pickMissing = kind === BetKind.Pick && selected === null;
   const canDig =
@@ -125,7 +118,6 @@ export function BetControls({
     amountWei !== undefined &&
     feeBudget !== undefined &&
     !belowMin &&
-    !aboveMax &&
     !pickMissing &&
     !busy;
 
@@ -213,13 +205,12 @@ export function BetControls({
     if (won) playWin();
     else playLose();
 
-    const payoutWei = won ? previewPayout(stake, kind, gridSize) : 0n;
+    const payoutWei = won ? stake : 0n;
 
     // No claim here on purpose: the verdict is shown immediately, and the
-    // payout (plus the bonanza check) is collected from the History page,
-    // so a Dig stays one fast transaction even when it strikes.
+    // refund + $SHARD (plus the bonanza check) are collected from the History
+    // page, so a Dig stays one fast transaction even when it strikes.
     setResult({ betId, won, payout: payoutWei });
-    await refetchStats();
     onChanged();
     return true;
   }
@@ -349,13 +340,13 @@ export function BetControls({
               onChange={(event) => setAmountInput(event.target.value)}
               disabled={busy || auto}
               aria-describedby="amount-hint"
-              aria-invalid={amountInput.trim() !== "" && (amountWei === undefined || belowMin || aboveMax)}
+              aria-invalid={amountInput.trim() !== "" && (amountWei === undefined || belowMin)}
               className="w-32 rounded-lg border border-white/10 bg-rock-void/80 px-3 py-1.5 font-mono text-sm text-slate-100 outline-none transition focus:border-gem-teal/50"
             />
           </div>
           <p id="amount-hint" className="text-xs leading-relaxed text-slate-500">
             {coverage > 1 && totalStake !== undefined ? `Total ${formatEth(totalStake, 6)} ETH (× ${coverage}) · ` : ""}
-            Min {formatEth(minTotal, 6)} ETH · +{formatEth(feeBudget, 7)} ETH Inco fee · 1% Bonanza + 1% protocol fee
+            Min {formatEth(minTotal, 6)} ETH · +{formatEth(feeBudget, 7)} ETH Inco fee · win: stake back + $SHARD · miss: 50% pot
             {totalCost !== undefined ? ` · ${formatEth(totalCost, 6)} ETH total` : ""}
           </p>
         </div>
@@ -364,17 +355,12 @@ export function BetControls({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
             <p className="text-sm text-slate-300">
-              If it lands:{" "}
+              If it lands: {" "}
               <span className="font-mono tabular-nums text-gem-teal [text-shadow:0_0_16px_rgba(62,230,196,0.35)]">
-                {formatEth(payout)} ETH
+                {formatEth(totalStake)} ETH back
               </span>
-              <span className="text-slate-400"> + {formatShard(shardRewardFor(kind))} $SHARD</span>
+              <span className="text-slate-400"> + {formatShard(shardWin)} $SHARD</span>
             </p>
-            {aboveMax && (
-              <p className="text-xs text-amber-200/90">
-                The bankroll currently covers Picks up to {formatEth(stats?.maxStake)} ETH — this amount would revert.
-              </p>
-            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -442,8 +428,8 @@ export function BetControls({
               <p className="mt-0.5 text-xs text-slate-400">
                 Dig #{result.betId.toString()}: {" "}
                 {result.won
-                  ? `${formatEth(result.payout)} ETH + ${formatShard(shardRewardFor(kind))} $SHARD — claim it in your History.`
-                  : "your pick stays sealed — no one can see what it was."}
+                  ? `${formatEth(result.payout)} ETH back + ${formatShard(previewShardWin(result.payout, kind))} $SHARD — claim it in your History.`
+                  : `missed — ${formatShard(previewShardLoss(totalStake ?? 0n))} $SHARD consolation waits in your History.`}
               </p>
             </motion.div>
           )}

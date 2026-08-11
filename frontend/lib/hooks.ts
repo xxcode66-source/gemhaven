@@ -89,7 +89,7 @@ export type GameStats = {
   bankroll: bigint;
   bonanzaPot: bigint;
   protocolFees: bigint;
-  maxStake: bigint;
+  escrow: bigint;
   nextBetId: bigint;
 };
 
@@ -101,7 +101,7 @@ export function useGameStats(): { stats: GameStats | undefined; isLoading: boole
       { ...gemHavenContract, functionName: "bankroll", chainId },
       { ...gemHavenContract, functionName: "bonanzaPot", chainId },
       { ...gemHavenContract, functionName: "protocolFees", chainId },
-      { ...gemHavenContract, functionName: "maxStake", chainId },
+      { ...gemHavenContract, functionName: "escrow", chainId },
       { ...gemHavenContract, functionName: "nextBetId", chainId },
     ],
     allowFailure: false,
@@ -110,17 +110,17 @@ export function useGameStats(): { stats: GameStats | undefined; isLoading: boole
 
   const stats = useMemo<GameStats | undefined>(() => {
     if (!query.data) return undefined;
-    const [bankroll, bonanzaPot, protocolFees, maxStake, nextBetId] = query.data;
+    const [bankroll, bonanzaPot, protocolFees, escrow, nextBetId] = query.data;
     if (
       bankroll === undefined ||
       bonanzaPot === undefined ||
       protocolFees === undefined ||
-      maxStake === undefined ||
+      escrow === undefined ||
       nextBetId === undefined
     ) {
       return undefined;
     }
-    return { bankroll, bonanzaPot, protocolFees, maxStake, nextBetId };
+    return { bankroll, bonanzaPot, protocolFees, escrow, nextBetId };
   }, [query.data]);
 
   return { stats, isLoading: query.isLoading, refetch: query.refetch };

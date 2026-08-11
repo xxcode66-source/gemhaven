@@ -47,7 +47,6 @@ export function shortenAddress(address: string | undefined): string {
  */
 const REVERT_MESSAGES: Record<string, string> = {
   StakeBelowMinimum: "That amount is below the minimum Dig.",
-  StakeAboveMaximum: "That Dig is larger than the bankroll can safely cover — pick a smaller amount.",
   UnknownBet: "That Dig does not exist on this deployment.",
   NotYourBet: "That Dig belongs to another wallet.",
   AlreadyClaimed: "This Dig has already been claimed.",

@@ -31,8 +31,8 @@ export default function AboutPage() {
 
           <dl className="grid content-start gap-4 sm:grid-cols-2">
             <Stat label="Deposits on the wall" value="36" />
-            <Stat label="Straight Pick payout" value="34.92x" />
-            <Stat label="Even / Odd payout" value="1.94x" />
+            <Stat label="Straight Pick SHARD" value="34.92x" />
+            <Stat label="Even / Odd SHARD" value="1.94x" />
             <Stat label="Minimum Dig" value="0.001 ETH" />
           </dl>
         </div>
@@ -96,9 +96,9 @@ export default function AboutPage() {
             <p className="engraved text-amber-200/80">The golden deposit</p>
             <h2 className="font-display text-3xl tracking-wide text-amber-100">Bonanza</h2>
             <p className="leading-relaxed text-amber-100/80">
-              Every Dig sets aside 1% of its stake into a rolling pot. If the cavern&apos;s draw lands on the golden
-              deposit — index 8 — the whole pot is released to that player on the spot, on top of the Dig&apos;s own
-              result. One public bit per Dig says whether it hit; who got it, and what they picked, stays sealed.
+              Half of every missed Dig flows into a rolling pot. If the cavern&apos;s draw lands on the golden deposit —
+              index 8 — the whole pot is released to that player on the spot, on top of the Dig&apos;s own result. One
+              public bit per Dig says whether it hit; who got it, and what they picked, stays sealed.
             </p>
           </div>
         </div>
@@ -108,8 +108,9 @@ export default function AboutPage() {
       <footer className="border-t border-white/[0.06]">
         <div className="mx-auto max-w-6xl space-y-2 px-5 py-8 text-xs leading-relaxed text-slate-600 sm:px-8">
           <p>
-            GemHaven is a hackathon build for Inco&apos;s Summer Game Jam. The contracts are unaudited, wins are capped
-            by the bankroll&apos;s solvency limit, and a ~3% house edge is baked into the fixed multipliers.
+            GemHaven is a hackathon build for Inco&apos;s Summer Game Jam. The contracts are unaudited, wins refund
+            your stake and mint $SHARD — the house never pays out of pocket — and a ~3% edge is baked into the SHARD
+            multipliers. $SHARD has no monetary value today; it records your share for a future token launch.
           </p>
           <p>Play responsibly — even on testnet ETH.</p>
         </div>
@@ -138,7 +139,7 @@ const STEPS = [
   },
   {
     title: "Claim instantly",
-    body: "Decrypt your win bit with your wallet and claim. Straight picks pay 34.92x, parity pays 1.94x, and wins mint $SHARD — 10 for a Pick, 2 for parity, 1 for an All grind.",
+    body: "Decrypt your win bit with your wallet and claim. A win returns your full stake plus $SHARD — 34.92x for a Pick, 1.94x for parity. A miss still mines a 0.5x consolation of $SHARD while half its stake feeds the Bonanza pot.",
   },
 ];
 

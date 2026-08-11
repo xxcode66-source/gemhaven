@@ -4,9 +4,9 @@ import { AnimatedEth } from "@/components/AnimatedEth";
 import { useGameStats } from "@/lib/hooks";
 
 /**
- * The house side of the instant game: the bankroll that pays wins, the rolling
- * Bonanza pot, and the solvency cap. There is no round to track — the game
- * runs continuously, one Dig at a time.
+ * The house side of the instant game: open escrow that always covers claims,
+ * the rolling Bonanza pot, protocol fees, and the house liquidity reserve.
+ * There is no round to track — the game runs continuously, one Dig at a time.
  */
 export function GamePulse() {
   const { stats } = useGameStats();
@@ -22,14 +22,14 @@ export function GamePulse() {
         </header>
 
         <dl className="grid grid-cols-2 gap-4">
-          <Metric label="Bankroll">
-            <AnimatedEth wei={stats?.bankroll} /> ETH
-          </Metric>
-          <Metric label="Max Pick stake">
-            <AnimatedEth wei={stats?.maxStake} decimals={6} /> ETH
+          <Metric label="Open escrow">
+            <AnimatedEth wei={stats?.escrow} /> ETH
           </Metric>
           <Metric label="Bonanza pot" accent>
             <AnimatedEth wei={stats?.bonanzaPot} /> ETH
+          </Metric>
+          <Metric label="House liquidity">
+            <AnimatedEth wei={stats?.bankroll} /> ETH
           </Metric>
           <Metric label="Protocol fees">
             <AnimatedEth wei={stats?.protocolFees} /> ETH
@@ -41,7 +41,7 @@ export function GamePulse() {
             <span aria-hidden className="mr-1">
               ✦
             </span>
-            1% of every Dig feeds the pot. Land the golden deposit — Amber, index 8 — and it&apos;s all yours.
+            Half of every missed Dig feeds the pot. Land the golden deposit — Amber, index 8 — and it&apos;s all yours.
           </p>
         </div>
       </div>
