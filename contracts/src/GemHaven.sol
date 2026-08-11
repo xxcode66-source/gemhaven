@@ -28,11 +28,13 @@ import {IShardMintable} from "./interfaces/IShardMintable.sol";
 ///
 /// @dev **Money flow.** Each stake is split three ways inside the stake: 1% to
 ///      {bonanzaPot}, 1% protocol fee to {protocolFees}, and the rest to
-///      {bankroll}. Wins pay from the bankroll at the fixed multiplier, so bets
-///      are capped by {maxStake} (itself bounded by the per-Dig exposure cap
-///      {payoutCapBps}) to keep the house solvent. House-edge profit accrues in
-///      the bankroll and is harvestable above {bankrollFloor} via {skimProfit};
-///      protocol fees are certain revenue, withdrawable via {withdrawFees}.
+///      {bankroll}. Wins pay from the bankroll at the fixed multiplier; every
+///      Dig reserves its potential payout in {reservedPayouts} until claimed,
+///      and the cumulative reservation is bounded by the exposure cap
+///      {payoutCapBps}, so the house stays solvent even if every unclaimed Dig
+///      wins at once. House-edge profit accrues in the bankroll and is
+///      harvestable above {bankrollFloor} via {skimProfit}; protocol fees are
+///      certain revenue, withdrawable via {withdrawFees}.
 ///      The Bonanza pot is released to the player of any Dig whose draw hit
 ///      {BONANZA_INDEX} — a zinc-style rolling pot funded purely by the per-Dig
 ///      cut.
@@ -154,11 +156,20 @@ contract GemHaven {
     ///         Raising it locks more ETH behind player payouts permanently.
     uint256 public bankrollFloor;
 
-    /// @notice Per-Dig exposure cap: the largest payout a single Dig may win,
-    ///         in bps of the bankroll. Defaults to 100% (legacy behaviour, fine
-    ///         for a seeded testnet); mainnet operators should lower it (e.g.
-    ///         500 = 5%) so no single win can gut the house.
+    /// @notice Per-Dig exposure cap: the largest TOTAL payout exposure the
+    ///         contract may carry at once, in bps of the bankroll. Every Dig
+    ///         reserves its potential payout in {reservedPayouts} until it is
+    ///         claimed (win or lose), so even if every unclaimed Dig wins at
+    ///         the same instant the bankroll covers them all — claims never
+    ///         revert for lack of funds. Defaults to 100% (fine for a seeded
+    ///         testnet); mainnet operators may lower it (e.g. 500 = 5%) so
+    ///         in-flight exposure stays a small slice of the house.
     uint16 public payoutCapBps;
+
+    /// @notice Sum of potential payouts of all unclaimed Digs. Reserved at bet
+    ///         time, released at claim time regardless of outcome, so the cap
+    ///         is enforced on cumulative exposure — not per Dig in isolation.
+    uint256 public reservedPayouts;
 
     /// @notice Lifetime $SHARD minted to each player from winning Pick claims.
     ///         A non-transferable mining score: it only grows by playing, so a
@@ -246,7 +257,12 @@ contract GemHaven {
         require(msg.value > budget, StakeBelowMinimum());
         uint256 stake = msg.value - budget;
         require(stake >= minStake * coverageOf(kind), StakeBelowMinimum());
-        require(payoutOf(stake, kind) <= maxPayout(), StakeAboveMaximum());
+        // Solvency by reservation: every Dig locks its potential payout until
+        // it is claimed, so the cap applies to ALL in-flight Digs at once.
+        // Two max-size parity Digs can no longer both win against one bankroll.
+        uint256 potential = payoutOf(stake, kind);
+        require(reservedPayouts + potential <= maxPayout(), StakeAboveMaximum());
+        reservedPayouts += potential;
 
         // Top-line cuts, both taken inside the stake: 1% accrues to the
         // Bonanza pot, 1% is the protocol fee, the rest feeds the bankroll
@@ -315,12 +331,15 @@ contract GemHaven {
         require(e.verifyDecryption(b.encWon, won, signatures), BadAttestation());
 
         b.claimed = true;
+        // Release this Dig's reservation whatever the outcome — losing claims
+        // free capacity just like winning ones.
+        uint256 payout = payoutOf(b.stake, b.kind);
+        reservedPayouts -= payout;
         if (!won) {
             emit Claimed(betId, msg.sender, false, 0, 0);
             return;
         }
 
-        uint256 payout = payoutOf(b.stake, b.kind);
         bankroll -= payout;
 
         uint256 shardMinted = shardReward(b.kind);
@@ -391,15 +410,19 @@ contract GemHaven {
         return (stake * mult) / MULT_DENOMINATOR;
     }
 
-    /// @notice Largest payout any single Dig may currently win — the bankroll
-    ///         scaled by {payoutCapBps}. At the 100% default this equals the
-    ///         whole bankroll.
+    /// @notice Largest total payout exposure the contract may currently carry —
+    ///         the bankroll scaled by {payoutCapBps}. At the 100% default the
+    ///         in-flight reservations of ALL unclaimed Digs may equal the whole
+    ///         bankroll, and every claim is funded by construction.
     function maxPayout() public view returns (uint256) {
         return (bankroll * uint256(payoutCapBps)) / BPS_DENOMINATOR;
     }
 
-    /// @notice Largest `Pick` stake the bankroll can currently cover; the UI caps
-    ///         presets at this. (`All` may stake `gridSize` times this total.)
+    /// @notice Largest `Pick` stake the bankroll can currently cover IF no
+    ///         other Dig is in flight; in-flight reservations shrink the room
+    ///         left for new Digs (`bet` re-checks and reverts with
+    ///         StakeAboveMaximum when full). The UI caps presets at this.
+    ///         (`All` may stake `gridSize` times this total.)
     function maxStake() public view returns (uint256) {
         return (maxPayout() * MULT_DENOMINATOR) / uint256(STRAIGHT_MULT_BPS);
     }
@@ -480,14 +503,20 @@ contract GemHaven {
     }
 
     /// @notice Harvests house-edge profit: `bps` of the bankroll growth above
-    ///         {bankrollFloor}. The seeded floor is never touched, and
+    ///         BOTH {bankrollFloor} and {reservedPayouts}. The seeded floor is
+    ///         never touched and in-flight Dig exposure is never undercut, and
     ///         {maxStake} simply adjusts down afterwards — solvency holds by
-    ///         construction because every bet re-checks its payout against the
-    ///         live bankroll.
+    ///         construction because every bet re-checks its reservation against
+    ///         the live bankroll.
     function skimProfit(uint16 bps, address to) external onlyOwner {
         require(to != address(0), ZeroAddress());
         require(bps != 0 && bps <= BPS_DENOMINATOR, InvalidBps());
-        uint256 excess = bankroll > bankrollFloor ? bankroll - bankrollFloor : 0;
+        // Shield both the seeded floor and whatever bankroll the live cap
+        // needs to back the in-flight reservations (reserved <= cap x bankroll).
+        uint256 needForCap =
+            (reservedPayouts * BPS_DENOMINATOR + uint256(payoutCapBps) - 1) / uint256(payoutCapBps);
+        uint256 shielded = bankrollFloor > needForCap ? bankrollFloor : needForCap;
+        uint256 excess = bankroll > shielded ? bankroll - shielded : 0;
         uint256 amount = (excess * uint256(bps)) / BPS_DENOMINATOR;
         require(amount != 0, NothingToWithdraw());
         bankroll -= amount;
