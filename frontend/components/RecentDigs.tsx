@@ -13,21 +13,30 @@ import { readVerdict, storeVerdict } from "@/lib/verdicts";
 /** The player's own decrypted verdict, plus the attestation `claim` will verify. */
 type Verdict = { won: boolean; signatures: Hex[] };
 
-/** Newest-first window shown before expanding. */
-const INITIAL_VISIBLE = 12;
+/** Newest-first pages of Digs. */
+const PAGE_SIZE = 10;
 
 export function RecentDigs({ onChanged }: { onChanged: () => void }) {
   const { isConnected } = useAccount();
   const { bets, isLoading, refetch } = usePlayerBets();
 
-  const [visible, setVisible] = useState(INITIAL_VISIBLE);
+  const [page, setPage] = useState(0);
+  const [betCount, setBetCount] = useState(0);
+
+  // A fresh Dig lands on page one — bring the list back so it is visible.
+  useEffect(() => {
+    if (bets.length > betCount) setPage(0);
+    if (bets.length !== betCount) setBetCount(bets.length);
+  }, [bets.length, betCount]);
 
   const refresh = async () => {
     await refetch();
     onChanged();
   };
 
-  const shown = bets.slice(0, visible);
+  const pageCount = Math.max(1, Math.ceil(bets.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const shown = bets.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
 
   return (
     <section aria-labelledby="digs-heading" className="rock-panel p-6">
@@ -61,14 +70,28 @@ export function RecentDigs({ onChanged }: { onChanged: () => void }) {
               ))}
             </ul>
 
-            {bets.length > visible && (
-              <button
-                type="button"
-                onClick={() => setVisible(bets.length)}
-                className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-slate-300 transition hover:border-white/25"
-              >
-                Show all {bets.length} Digs
-              </button>
+            {bets.length > 0 && (
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPage(Math.max(0, safePage - 1))}
+                  disabled={safePage === 0}
+                  className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-slate-300 transition hover:border-white/25 disabled:opacity-40 disabled:hover:border-white/10"
+                >
+                  ← Newer
+                </button>
+                <p className="font-mono text-xs tabular-nums text-slate-500">
+                  Page {safePage + 1} / {pageCount} · {bets.length} Digs
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setPage(Math.min(pageCount - 1, safePage + 1))}
+                  disabled={safePage >= pageCount - 1}
+                  className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-slate-300 transition hover:border-white/25 disabled:opacity-40 disabled:hover:border-white/10"
+                >
+                  Older →
+                </button>
+              </div>
             )}
           </div>
         )}

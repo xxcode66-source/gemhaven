@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { decodeEventLog, parseEther, type Hex } from "viem";
+import { decodeEventLog, parseEther } from "viem";
 import { useAccount, usePublicClient, useWalletClient, useWriteContract } from "wagmi";
 
 import {
@@ -19,7 +19,7 @@ import {
 import { describeError, formatEth, formatShard } from "@/lib/format";
 import { coverageOf, shardRewardFor } from "@/lib/contracts";
 import { useActiveChainId, useCavernConfig, useGameStats, useIncoFeeBudget } from "@/lib/hooks";
-import { decryptOwnResult, encryptDeposit, revealPublicBit } from "@/lib/inco";
+import { decryptOwnResult, encryptDeposit } from "@/lib/inco";
 import { storeVerdict } from "@/lib/verdicts";
 import type { DigOutcome } from "./CavernGrid";
 
@@ -36,9 +36,9 @@ const KIND_OPTIONS: { kind: BetKindValue; mult: string; hint: string }[] = [
   { kind: BetKind.All, mult: "0.97x", hint: "whole wall" },
 ];
 
-type DigStage = "idle" | "sealing" | "signing" | "resolving" | "decrypting" | "claiming" | "bonanza";
+type DigStage = "idle" | "sealing" | "signing" | "resolving" | "decrypting";
 
-type LastResult = { betId: bigint; won: boolean; payout: bigint; bonanza?: bigint };
+type LastResult = { betId: bigint; won: boolean; payout: bigint };
 
 export function BetControls({
   kind,
@@ -197,55 +197,11 @@ export function BetControls({
     onOutcome(kind === BetKind.Pick && pick !== null ? { pick, won } : null);
 
     const payoutWei = won ? previewPayout(stake, kind, gridSize) : 0n;
-    let bonanzaPaid: bigint | undefined;
 
-    if (won) {
-      setStage("claiming");
-      const claimHash = await writeContractAsync({
-        ...gemHavenContract,
-        functionName: "claim",
-        args: [betId, true, attested.signatures],
-        chainId,
-      });
-      const claimReceipt = await publicClient.waitForTransactionReceipt({ hash: claimHash });
-      if (claimReceipt.status !== "success") {
-        throw new Error("The claim transaction reverted on chain.");
-      }
-    }
-
-    // The bonanza bit is public by design, so checking it needs no wallet
-    // signature. A hit releases the whole pot to this Dig's player.
-    try {
-      const bonanza = await revealPublicBit(view.bonanzaHandle, chainId);
-      if (bonanza.value) {
-        setStage("bonanza");
-        const bonanzaHash = await writeContractAsync({
-          ...gemHavenContract,
-          functionName: "claimBonanza",
-          args: [betId, true, bonanza.signatures],
-          chainId,
-        });
-        const bonanzaReceipt = await publicClient.waitForTransactionReceipt({ hash: bonanzaHash });
-        if (bonanzaReceipt.status === "success") {
-          const claimed = bonanzaReceipt.logs
-            .map((log) => {
-              try {
-                return decodeEventLog({ abi: gemHavenAbi, data: log.data, topics: log.topics });
-              } catch {
-                return undefined;
-              }
-            })
-            .find((decoded) => decoded?.eventName === "BonanzaClaimed");
-          if (claimed && claimed.eventName === "BonanzaClaimed") {
-            bonanzaPaid = claimed.args.amount;
-          }
-        }
-      }
-    } catch {
-      // A bonanza check must never break the Dig flow itself.
-    }
-
-    setResult({ betId, won, payout: payoutWei, bonanza: bonanzaPaid });
+    // No claim here on purpose: the verdict is shown immediately, and the
+    // payout (plus the bonanza check) is collected from the Recent Digs row,
+    // so a Dig stays one fast transaction even when it strikes.
+    setResult({ betId, won, payout: payoutWei });
     await refetchStats();
     onChanged();
     return true;
@@ -412,8 +368,6 @@ export function BetControls({
               {stage === "signing" && "Confirm in wallet…"}
               {stage === "resolving" && "Drawing the Motherlode…"}
               {stage === "decrypting" && "Decrypting your result…"}
-              {stage === "claiming" && "Claiming…"}
-              {stage === "bonanza" && "Bonanza — claiming the pot…"}
               {stage === "idle" &&
                 (pickMissing ? "Pick a deposit first" : auto ? "Auto running…" : `Dig — ${kindLabel}`)}
             </button>
@@ -425,11 +379,10 @@ export function BetControls({
           {isConnected && belowMin && "That amount is below the minimum Dig."}
           {isConnected && !busy && result !== null && (
             <span className={result.won ? "text-amber-200" : "text-slate-400"}>
-              Dig #{result.betId.toString()}:{" "}
+              Dig #{result.betId.toString()}: {" "}
               {result.won
-                ? `struck — claimed ${formatEth(result.payout)} ETH + ${formatShard(shardRewardFor(kind))} $SHARD.`
+                ? `struck — claim ${formatEth(result.payout)} ETH + ${formatShard(shardRewardFor(kind))} $SHARD from your Recent Digs below.`
                 : "missed. Your pick stays sealed — no one can see what it was."}
-              {result.bonanza !== undefined && ` Bonanza released: ${formatEth(result.bonanza)} ETH!`}
             </span>
           )}
         </p>

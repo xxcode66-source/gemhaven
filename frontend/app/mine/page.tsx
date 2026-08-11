@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import { BetControls } from "@/components/BetControls";
 import { CavernGrid, type DigOutcome } from "@/components/CavernGrid";
 import { GamePulse } from "@/components/GamePulse";
+import { RecentDigs } from "@/components/RecentDigs";
 import { ShardBalance } from "@/components/ShardBalance";
 import { BetKind, type BetKindValue } from "@/lib/contracts";
 import { useCavernConfig, useGameStats } from "@/lib/hooks";
@@ -58,6 +59,7 @@ export default function MinePage() {
             onChanged={refreshAll}
             onBusyChange={setBusy}
           />
+          <RecentDigs onChanged={refreshAll} />
         </div>
 
         <aside className="space-y-6">
