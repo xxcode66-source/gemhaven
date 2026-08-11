@@ -47,6 +47,7 @@ export default function MinePage() {
             onSelect={setSelected}
             outcome={outcome}
             disabled={busy}
+            digging={busy}
           />
           <BetControls
             kind={kind}

@@ -67,6 +67,7 @@ export function CavernGrid({
   onSelect,
   outcome,
   disabled,
+  digging,
 }: {
   gridSize: number;
   kind: BetKindValue;
@@ -76,6 +77,8 @@ export function CavernGrid({
   outcome: DigOutcome | null;
   /** Disables picking while a Dig is in flight. */
   disabled: boolean;
+  /** True while a Dig is settling — covered deposits churn in response. */
+  digging: boolean;
 }) {
   const reduceMotion = useReducedMotion();
 
@@ -100,7 +103,7 @@ export function CavernGrid({
       <ul
         role={picking ? "radiogroup" : undefined}
         aria-label="Deposits on the cavern wall"
-        className="grid grid-cols-3 gap-3 sm:grid-cols-4 sm:gap-4 md:grid-cols-6"
+        className="grid grid-cols-3 gap-3 [perspective:1300px] sm:grid-cols-4 sm:gap-4 md:grid-cols-6"
       >
         {deposits.map((index) => {
           const gem = family(index);
@@ -146,52 +149,117 @@ export function CavernGrid({
                     style={{ background: "radial-gradient(circle, rgba(251,191,106,0.35) 0%, transparent 66%)" }}
                   />
                 )}
-                <motion.span
-                  animate={reduceMotion ? undefined : { scale: isSelected ? 1.05 : 1, y: isSelected ? -3 : 0 }}
-                  transition={{ type: "spring", stiffness: 320, damping: 24 }}
-                  className="relative block"
-                >
-                  {/* The gem body. facet-clip gives the seven-point silhouette. */}
-                  <span
-                    className={[
-                      "facet-clip relative flex aspect-square items-center justify-center overflow-hidden",
-                      "border-0 transition-[filter,opacity] duration-300",
-                      isStrike && strikeWon && !reduceMotion ? "animate-crack" : "",
-                      isLit || isStrike ? "opacity-100" : "opacity-40",
-                      isSelected ? "brightness-125" : isLit ? "brightness-110" : picking ? "group-hover:brightness-110" : "",
-                    ].join(" ")}
-                    style={{
-                      background: `linear-gradient(155deg, ${gem.hex}2e 0%, #12151d 42%, #0b0d12 100%)`,
-                      boxShadow: isSelected || (isStrike && strikeWon) ? `0 0 34px -6px ${gem.glow}` : "none",
-                    }}
+                {/* The living wall: every deposit sways in 3D on its own
+                    offset, so the cavern reads as breathing rock. */}
+                <span className="tile-sway block" style={{ animationDelay: `${-((index * 7) % 12) * 0.6}s` }}>
+                  <motion.span
+                    animate={reduceMotion ? undefined : { scale: isSelected ? 1.05 : 1, y: isSelected ? -3 : 0 }}
+                    transition={{ type: "spring", stiffness: 320, damping: 24 }}
+                    className="relative block"
                   >
-                    {/* Inner facet lines — hand-drawn crown/pavilion edges. */}
-                    <span
-                      aria-hidden
-                      className="absolute inset-0 opacity-40"
-                      style={{
-                        background: `linear-gradient(to bottom right, transparent 48%, ${gem.hex}44 49%, transparent 51%),
-                                     linear-gradient(to bottom left, transparent 48%, ${gem.hex}33 49%, transparent 51%)`,
-                      }}
-                    />
-                    <span
-                      aria-hidden
-                      className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2"
-                      style={{ background: `linear-gradient(180deg, ${gem.hex}55, transparent 70%)` }}
-                    />
-                    {!reduceMotion && <span aria-hidden className="facet-sheen animate-shimmer" />}
-
-                    <span className="relative flex flex-col items-center gap-0.5">
+                    {/* Churn while the Motherlode is drawing; then flip to the
+                        verdict face once this wallet's own result decrypts. */}
+                    <motion.span
+                      initial={false}
+                      animate={
+                        reduceMotion
+                          ? { rotateY: isStrike ? 180 : 0 }
+                          : isStrike
+                            ? { rotateY: 180 }
+                            : digging && isLit
+                              ? { rotateY: [0, 360] }
+                              : { rotateY: 0 }
+                      }
+                      transition={
+                        reduceMotion
+                          ? { duration: 0 }
+                          : isStrike
+                            ? { duration: 0.9, ease: [0.2, 0.85, 0.25, 1] }
+                            : digging && isLit
+                              ? {
+                                  duration: 1.15,
+                                  repeat: Infinity,
+                                  ease: "linear",
+                                  delay: ((index % 6) + (Math.floor(index / 6) % 2)) * 0.055,
+                                }
+                              : { duration: 0.45, ease: "easeOut" }
+                      }
+                      className="relative block"
+                      style={{ transformStyle: "preserve-3d" }}
+                    >
+                      {/* Front face — the gem itself. */}
                       <span
-                        className="font-display text-2xl leading-none sm:text-3xl"
-                        style={{ color: isSelected || (isStrike && strikeWon) ? gem.hex : isLit ? "#cbd5e1" : "#94a3b8" }}
+                        className={[
+                          "facet-clip relative flex aspect-square items-center justify-center overflow-hidden",
+                          "border-0 transition-[filter,opacity] duration-300",
+                          isLit || isStrike ? "opacity-100" : "opacity-40",
+                          isSelected ? "brightness-125" : isLit ? "brightness-110" : picking ? "group-hover:brightness-110" : "",
+                        ].join(" ")}
+                        style={{
+                          background: `linear-gradient(155deg, ${gem.hex}2e 0%, #12151d 42%, #0b0d12 100%)`,
+                          boxShadow: isSelected || (isStrike && strikeWon) ? `0 0 34px -6px ${gem.glow}` : "none",
+                          backfaceVisibility: "hidden",
+                        }}
                       >
-                        {tileNumber}
+                        {/* Inner facet lines — hand-drawn crown/pavilion edges. */}
+                        <span
+                          aria-hidden
+                          className="absolute inset-0 opacity-40"
+                          style={{
+                            background: `linear-gradient(to bottom right, transparent 48%, ${gem.hex}44 49%, transparent 51%),
+                                         linear-gradient(to bottom left, transparent 48%, ${gem.hex}33 49%, transparent 51%)`,
+                          }}
+                        />
+                        <span
+                          aria-hidden
+                          className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2"
+                          style={{ background: `linear-gradient(180deg, ${gem.hex}55, transparent 70%)` }}
+                        />
+                        {!reduceMotion && <span aria-hidden className="facet-sheen animate-shimmer" />}
+
+                        <span className="relative flex flex-col items-center gap-0.5">
+                          <span
+                            className="font-display text-2xl leading-none sm:text-3xl"
+                            style={{ color: isSelected || (isStrike && strikeWon) ? gem.hex : isLit ? "#cbd5e1" : "#94a3b8" }}
+                          >
+                            {tileNumber}
+                          </span>
+                          <span className="text-[0.5rem] uppercase tracking-[0.1em] text-slate-500">{depositName(index)}</span>
+                        </span>
                       </span>
-                      <span className="text-[0.5rem] uppercase tracking-[0.1em] text-slate-500">{depositName(index)}</span>
-                    </span>
-                  </span>
-                </motion.span>
+
+                      {/* Back face — plain rock while churning, the verdict once struck. */}
+                      <span
+                        aria-hidden
+                        className="facet-clip absolute inset-0 flex items-center justify-center"
+                        style={{
+                          transform: "rotateY(180deg)",
+                          backfaceVisibility: "hidden",
+                          background:
+                            isStrike && strikeWon
+                              ? "linear-gradient(155deg, rgba(251,191,106,0.55) 0%, #3a2c0e 46%, #0b0d12 100%)"
+                              : "linear-gradient(155deg, #2a303c 0%, #12151d 46%, #0b0d12 100%)",
+                          boxShadow: isStrike && strikeWon ? "0 0 44px -6px rgba(251,191,106,0.5)" : "none",
+                        }}
+                      >
+                        {isStrike && (
+                          <span className="flex flex-col items-center gap-1">
+                            <span
+                              className={`font-display text-2xl leading-none sm:text-3xl ${strikeWon ? "text-amber-200" : "text-slate-500"}`}
+                            >
+                              {strikeWon ? "★" : "◆"}
+                            </span>
+                            <span
+                              className={`text-[0.5rem] uppercase tracking-[0.16em] ${strikeWon ? "text-amber-200/90" : "text-slate-500"}`}
+                            >
+                              {strikeWon ? "Struck" : "Sealed"}
+                            </span>
+                          </span>
+                        )}
+                      </span>
+                    </motion.span>
+                  </motion.span>
+                </span>
 
                 {/* Text badges, so state never depends on colour alone. */}
                 <AnimatePresence>

@@ -146,6 +146,10 @@ export function BetControls({
     const pick = kind === BetKind.Pick ? selected : 0;
     if (kind === BetKind.Pick && pick === null) return false;
 
+    // Clear the previous verdict so the wall never shows a stale result while
+    // the new Dig is still sealed.
+    onOutcome(null);
+
     setStage("sealing");
     const ciphertext = await encryptDeposit({
       deposit: pick ?? 0,
