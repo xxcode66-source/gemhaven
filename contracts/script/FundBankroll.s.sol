@@ -17,7 +17,7 @@ contract FundBankroll is Script {
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");
         uint256 topup = vm.envOr("TOPUP_WEI", uint256(0.0005 ether));
-        IFundable haven = IFundable(0x444b9027c7e76e9c62A8EFe1e6364C77b7D5f215); // v2.5
+        IFundable haven = IFundable(0xe7eb298AfEE79F40f35CEfdCFcccBCBcC2754411); // v2.7
 
         vm.startBroadcast(pk);
         haven.fundBankroll{value: topup}();
