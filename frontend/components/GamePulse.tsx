@@ -41,7 +41,8 @@ export function GamePulse() {
             <span aria-hidden className="mr-1">
               ✦
             </span>
-            Half of every missed Dig feeds the pot. Land the golden deposit — Amber, index 8 — and it&apos;s all yours.
+            Half of every missed Dig feeds the pot. If the hidden draw lands on the golden slot — №8, Amber — that
+            Dig&apos;s player takes the whole pot.
           </p>
         </div>
       </div>

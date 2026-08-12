@@ -96,9 +96,10 @@ export default function AboutPage() {
             <p className="engraved text-amber-200/80">The golden deposit</p>
             <h2 className="font-display text-3xl tracking-wide text-amber-100">Bonanza</h2>
             <p className="leading-relaxed text-amber-100/80">
-              Half of every missed Dig flows into a rolling pot. If the cavern&apos;s draw lands on the golden deposit —
-              index 8 — the whole pot is released to that player on the spot, on top of the Dig&apos;s own result. One
-              public bit per Dig says whether it hit; who got it, and what they picked, stays sealed.
+              Half of every missed Dig flows into a rolling pot. If the cavern&apos;s hidden draw lands on the golden slot —
+              №8 on the wheel, the Amber deposit — the whole pot is released to that Dig&apos;s player on the spot, on
+              top of the Dig&apos;s own result. Your pick plays no part in it: the bonanza is the draw&apos;s own
+              lottery. One public bit per Dig says whether it hit; who got it, and what they picked, stays sealed.
             </p>
           </div>
         </div>

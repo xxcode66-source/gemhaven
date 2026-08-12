@@ -72,6 +72,7 @@ export function MotherlodeWheel({
   selected,
   onSelect,
   outcome,
+  lastOutcome,
   disabled,
   digging,
 }: {
@@ -81,6 +82,9 @@ export function MotherlodeWheel({
   onSelect: (index: number | null) => void;
   /** Last resolved Dig of this wallet, for the reveal. */
   outcome: DigOutcome | null;
+  /** The wallet's most recent verdict — keeps the hub's result line up after
+   *  the reveal animation has faded back to the idle drift. */
+  lastOutcome: DigOutcome | null;
   /** Disables picking while a Dig is in flight. */
   disabled: boolean;
   /** True while a Dig is settling — the wheel spins while the draw stays hidden. */
@@ -141,6 +145,9 @@ export function MotherlodeWheel({
 
   const strikeIndex = outcome?.pick !== null && outcome?.pick !== undefined ? outcome.pick : null;
   const strikeWon = outcome?.won ?? false;
+  // The hub keeps stating the wallet's newest verdict even after the reveal
+  // animation has faded and the rim has gone back to drifting.
+  const shown = outcome ?? lastOutcome;
 
   return (
     <section id="cavern" aria-labelledby="cavern-heading" className="space-y-6">
@@ -317,22 +324,26 @@ export function MotherlodeWheel({
               <p className="engraved">Drawing…</p>
               <p className="px-3 text-[0.65rem] leading-snug text-slate-500">the Motherlode stays hidden</p>
             </>
-          ) : outcome ? (
-            strikeWon ? (
+          ) : shown ? (
+            shown.won ? (
               <>
                 <span aria-hidden className="font-display text-2xl text-amber-200 [text-shadow:0_0_18px_rgba(251,191,106,0.6)]">
                   ★
                 </span>
                 <p className="font-display text-sm tracking-wide text-amber-200">Struck!</p>
-                <p className="px-3 text-[0.65rem] leading-snug text-slate-500">claim it in your History</p>
+                <p className="px-3 text-[0.65rem] leading-snug text-slate-500">
+                  Dig #{shown.id.toString()} — claim it in your History
+                </p>
               </>
             ) : (
               <>
                 <span aria-hidden className="font-display text-2xl text-slate-500">
                   ◆
                 </span>
-                <p className="font-display text-sm tracking-wide text-slate-400">Sealed</p>
-                <p className="px-3 text-[0.65rem] leading-snug text-slate-500">your pick stays hidden</p>
+                <p className="font-display text-sm tracking-wide text-slate-300">Missed</p>
+                <p className="px-3 text-[0.65rem] leading-snug text-slate-500">
+                  Dig #{shown.id.toString()} — consolation $SHARD in History
+                </p>
               </>
             )
           ) : (

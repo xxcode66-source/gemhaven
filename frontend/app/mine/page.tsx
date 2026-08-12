@@ -19,7 +19,15 @@ export default function MinePage() {
   const [kind, setKind] = useState<BetKindValue>(BetKind.Pick);
   const [selected, setSelected] = useState<number | null>(null);
   const [outcome, setOutcome] = useState<DigOutcome | null>(null);
+  // The reveal animation fades after a few seconds, but the hub keeps stating
+  // the wallet's newest verdict until the next Dig starts.
+  const [lastOutcome, setLastOutcome] = useState<DigOutcome | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const handleOutcome = useCallback((next: DigOutcome | null) => {
+    setOutcome(next);
+    if (next) setLastOutcome(next);
+  }, []);
 
   // The verdict lingers long enough to land — settle spin included, roughly
   // four seconds on Struck/Sealed — then the wheel returns to its idle face.
@@ -43,6 +51,7 @@ export default function MinePage() {
         selected={selected}
         onSelect={setSelected}
         outcome={outcome}
+        lastOutcome={lastOutcome}
         disabled={busy}
         digging={busy}
       />
@@ -53,7 +62,7 @@ export default function MinePage() {
           if (next !== BetKind.Pick) setSelected(null);
         }}
         selected={selected}
-        onOutcome={setOutcome}
+        onOutcome={handleOutcome}
         onChanged={refreshAll}
         onBusyChange={setBusy}
       />

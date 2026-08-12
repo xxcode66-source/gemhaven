@@ -187,6 +187,10 @@ export function BetControls({
       ...gemHavenContract,
       functionName: "getBet",
       args: [betId],
+      // Pin the read to the block that mined the Dig: a load-balanced RPC can
+      // answer the receipt from one replica and the follow-up call from a
+      // lagging one whose nextBetId has not advanced yet (UnknownBet).
+      blockNumber: receipt.blockNumber,
     });
     if (!view) {
       throw new Error(`Bet ${betId} could not be read back from the chain.`);
